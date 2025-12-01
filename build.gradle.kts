@@ -9,7 +9,7 @@ plugins {
 // 1. Task to generate the benchmark report using a Python script.
 //    This is separated into its own Exec task for clarity, reusability,
 //    and better Gradle task graph management.
-tasks.register<Exec>("generateBenchmarkReport") {
+tasks.register("generateBenchmarkReport", Exec::class.java) {
     group = "benchmark"
     description = "Generates single scenario comparison report (baseline vs heavy)."
     workingDir = project.rootDir

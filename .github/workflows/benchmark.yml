@@ -1,0 +1,57 @@
+name: Android Benchmark CI
+
+default-branch: &default-branch main
+
+env:
+  DEFAULT_BRANCH: main
+
+on:
+  push:
+    branches: [ *default-branch ]
+  pull_request:
+    branches: [ *default-branch ]
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build project
+        run: ./gradlew assembleDebug
+
+      - name: Run Benchmarks (instrumented)
+        run: ./gradlew runBenchmarks
+
+      - name: Pull Benchmark Results
+        run: |
+          mkdir -p benchmark-results/benchmarks
+          adb pull /sdcard/Android/data/io.app.benchmark/files/benchmarks benchmark-results/benchmarks
+
+      - name: Generate HTML Report
+        run: python3 benchmark-sdk/scripts/generate_report.py
+
+      - name: Upload HTML Report Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report
+          path: benchmark-results/report.html
+
+      - name: Upload Raw Benchmark Data
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-data
+          path: benchmark-results/benchmarks/
