@@ -35,6 +35,36 @@ object ScenarioMetrics {
         cpuLoop()
         allocateMemory()
         mockNetwork()
+        checkApi1NetwrokMetrics()
+        checkApi2NetwrokMetrics()
+    }
+
+    private fun checkApi1NetwrokMetrics() {
+        val aviationResult = BenchmarkSDK.realNetworkRequest(
+            url = "https://aviationweather.gov/api/data/metar?ids=KMCI&format=json",
+            metricPrefix = "network_aviation"
+        )
+        aviationResult.let {
+            val contentLength: Number = it.responseLength ?: 0
+            BenchmarkSDK.recordMetric("aviationContentLength", contentLength)
+        }
+        if (scenario == Scenario.HEAVY) {
+            Thread.sleep(2000) // Add artificial delay for heavy scenario
+        }
+    }
+
+    private fun checkApi2NetwrokMetrics() {
+        val googleResult = BenchmarkSDK.realNetworkRequest(
+            url = "https://www.google.com",
+            metricPrefix = "network_google"
+        )
+        googleResult.let {
+            val contentLength: Number = it.responseLength ?: 0
+            BenchmarkSDK.recordMetric("googleContentLength", contentLength)
+        }
+        if (scenario == Scenario.HEAVY) {
+            Thread.sleep(3000) // Add artificial delay for heavy scenario
+        }
     }
 
     private fun cpuLoop() {

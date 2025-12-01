@@ -121,4 +121,53 @@ object BenchmarkSDK {
         ?.filter { it.isFile && it.extension == "json" && it != current }
         ?.maxByOrNull { it.lastModified() }
         ?.let { BenchmarkJsonWriter.read(it) }
+
+    data class NetworkBenchmarkResult(
+        val url: String,
+        val method: String,
+        val durationMs: Long,
+        val responseCode: Int?,
+        val responseLength: Int?,
+        val error: String?
+    )
+
+    fun realNetworkRequest(
+        url: String,
+        metricPrefix: String = "network",
+        method: String = "GET",
+        body: String? = null
+    ): NetworkBenchmarkResult {
+        val start = SystemClock.elapsedRealtime()
+        var responseCode: Int? = null
+        var responseLength: Int? = null
+        var error: String? = null
+        try {
+            val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+            connection.requestMethod = method.uppercase()
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+            if (method.uppercase() == "POST" || method.uppercase() == "PUT") {
+                connection.doOutput = true
+                body?.let {
+                    val bytes = it.toByteArray(Charsets.UTF_8)
+                    connection.setRequestProperty("Content-Type", "application/json")
+                    connection.outputStream.use { os -> os.write(bytes) }
+                }
+            }
+            responseCode = connection.responseCode
+            val response = connection.inputStream.bufferedReader().use { it.readText() }
+            responseLength = response.length
+        } catch (e: Exception) {
+            error = e.javaClass.simpleName + ": " + e.message
+        }
+        val duration = SystemClock.elapsedRealtime() - start
+        // Register metrics for reporting
+        recordMetric("${metricPrefix}_requestMs", duration)
+        recordMetric("${metricPrefix}_responseCode", responseCode ?: -1)
+        recordMetric("${metricPrefix}_responseLength", responseLength ?: 0)
+        if (error != null) {
+            recordMetric("${metricPrefix}_error", 1)
+        }
+        return NetworkBenchmarkResult(url, method, duration, responseCode, responseLength, error)
+    }
 }

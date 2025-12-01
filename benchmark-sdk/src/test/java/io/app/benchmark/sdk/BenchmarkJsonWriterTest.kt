@@ -17,4 +17,3 @@ class BenchmarkJsonWriterTest {
         tmp.delete()
     }
 }
-

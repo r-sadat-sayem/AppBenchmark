@@ -14,12 +14,6 @@ import androidx.compose.ui.unit.dp
 import io.app.benchmark.demo.ScenarioMetrics
 import io.app.benchmark.ui.theme.SampleAppBenchmarkTheme
 import io.app.benchmark.sdk.BenchmarkSDK
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlin.random.Random
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

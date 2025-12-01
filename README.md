@@ -7,6 +7,7 @@ This project contains a sample Android app and a lightweight Benchmark SDK libra
 - Custom metric registration API
 - JSON + HTML report generation with automatic diff vs previous run
 - Simple Gradle task `runBenchmarks` for CI
+- **Real network benchmarking** using aviationweather.gov API (see below)
 
 ## Modules
 - `app`: Sample application using Jetpack Compose
@@ -21,6 +22,14 @@ Pull results from device/emulator:
 adb shell ls /sdcard/Android/data/io.app.benchmark/files/benchmarks
 adb pull /sdcard/Android/data/io.app.benchmark/files/benchmarks ./benchmark-results
 ```
+
+## Real Network Benchmark Example
+The sample app demonstrates benchmarking a real network request:
+
+- **Baseline scenario**: Measures actual latency for a GET request to `https://aviationweather.gov/api/data/metar?ids=KMCI&format=json`.
+- **Heavy scenario**: Measures the same request, then adds a 3000ms artificial delay to simulate stress.
+
+To run both scenarios, set `BENCH_SCENARIO` in your build config to `baseline` or `heavy`.
 
 ## Adding to Another Project
 1. Publish `benchmark-sdk` (MavenLocal or remote) or copy module.
@@ -65,4 +74,3 @@ stage('Benchmarks') {
 
 ## License
 You can attach a suitable OSS license (e.g., Apache 2.0) here.
-

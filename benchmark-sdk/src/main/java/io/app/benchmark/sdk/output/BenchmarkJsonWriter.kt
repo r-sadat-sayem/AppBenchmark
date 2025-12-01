@@ -1,22 +1,23 @@
 package io.app.benchmark.sdk.output
 
-import org.json.JSONObject
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import java.io.File
 
 object BenchmarkJsonWriter {
+
+    private val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+    private val type = Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+    private val metricsAdapter = moshi.adapter<Map<String, Any>>(type)
+
     fun write(file: File, metrics: Map<String, Any>) {
-        val root = JSONObject()
-        root.put("timestamp", System.currentTimeMillis())
-        val metricsObj = JSONObject()
-        metrics.forEach { (k,v) -> metricsObj.put(k, v) }
-        root.put("metrics", metricsObj)
-        file.writeText(root.toString(2))
+        file.writeText(metricsAdapter.toJson(metrics))
     }
 
-    fun read(file: File): Map<String, Any>? = try {
-        val text = file.readText()
-        val obj = JSONObject(text).getJSONObject("metrics")
-        obj.keys().asSequence().associateWith { obj.get(it) }
-    } catch (t: Throwable) { null }
+    fun read(file: File): Map<String, Any>? =
+        metricsAdapter.fromJson(file.readText())
 }
 

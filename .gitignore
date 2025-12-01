@@ -11,3 +11,4 @@ local.properties
 
 # Project exclude paths
 /benchmark-sdk/build/
+/benchmark-results/
