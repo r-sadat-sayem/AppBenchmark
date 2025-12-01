@@ -1,16 +1,18 @@
 import json
 from pathlib import Path
+import time
 
-results_dir = Path("benchmark-results/benchmarks")
+root_dir = Path("benchmark-results/")
+results_dir = Path(root_dir / "benchmarks")
 results_dir.mkdir(parents=True, exist_ok=True)
 
 baseline_file = results_dir / "benchmark-baseline.json"
 heavy_file = results_dir / "benchmark-heavy.json"
-report_json_path = results_dir / "benchmark-report.json"
+report_json_path = root_dir / "report.json"
 
 if not baseline_file.exists() or not heavy_file.exists():
     report_json_path.write_text(json.dumps({"error": "Missing scenario files; need both benchmark-baseline.json and benchmark-heavy.json to compare."}))
-    print("Missing scenario files; generated placeholder report.")
+    print(f"Missing scenario files; generated placeholder report: {report_json_path}")
     raise SystemExit(0)
 
 def load_metrics(file: Path):
@@ -23,7 +25,10 @@ def load_metrics(file: Path):
 baseline = load_metrics(baseline_file)
 heavy = load_metrics(heavy_file)
 
-# Grouping logic
+latest_file = max([baseline_file, heavy_file], key=lambda f: f.stat().st_mtime)
+latest_type = "baseline" if latest_file == baseline_file else "heavy"
+latest_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(latest_file.stat().st_mtime))
+
 cpu_os_keys = [k for k in baseline.keys() | heavy.keys() if k.startswith("cpu") or k.startswith("process") or k.startswith("startup") or k.startswith("os")]
 memory_keys = [k for k in baseline.keys() | heavy.keys() if k.startswith("memory") or "leak" in k.lower()]
 network_keys = [k for k in baseline.keys() | heavy.keys() if k.startswith("network") or k.endswith("requestMs") or k.endswith("responseCode") or k.endswith("responseLength") or k.endswith("error")]
@@ -74,13 +79,14 @@ def make_rows(keys, highlight_leak=False, highlight_error=False):
     return rows
 
 report_data = {
+    "latest_type": latest_type,
+    "latest_time": latest_time,
     "cpu_os": make_rows(cpu_os_keys),
     "memory": make_rows(memory_keys, highlight_leak=True),
     "network": make_rows(network_keys, highlight_error=True),
     "other": make_rows(other_keys) if other_keys else [],
 }
 
-# --- Overall performance summary ---
 all_changes = []
 for section in [report_data["cpu_os"], report_data["memory"], report_data["network"], report_data["other"]]:
     for row in section:

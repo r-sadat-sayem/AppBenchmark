@@ -6,7 +6,6 @@ import android.os.Process
 import android.os.SystemClock
 import android.util.Log
 import io.app.benchmark.sdk.internal.StartupTimeTracker
-import io.app.benchmark.sdk.output.BenchmarkHtmlReporter
 import io.app.benchmark.sdk.output.BenchmarkJsonWriter
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -56,7 +55,7 @@ object BenchmarkSDK {
         return result
     }
 
-    /** Collect metrics and persist JSON + HTML reports. Returns the metrics map. */
+    /** Collect metrics and persist JSON report. Returns the metrics map. */
     fun collectAndPersist(context: Context): Map<String, Any> {
         val metrics = LinkedHashMap<String, Any>()
         startupDurationMs?.let { metrics["startupTimeMs"] = it }
@@ -66,15 +65,10 @@ object BenchmarkSDK {
         val outDir = context.getExternalFilesDir("benchmarks") ?: context.filesDir
         if (!outDir.exists()) outDir.mkdirs()
 
-        val timestamp = System.currentTimeMillis()
-        val jsonFile = File(outDir, "benchmark-$timestamp.json")
+        val jsonFile = File(outDir, "benchmark-latest.json")
         BenchmarkJsonWriter.write(jsonFile, metrics)
 
-        val previous = findPreviousResult(outDir, jsonFile)
-        val htmlFile = File(outDir, "benchmark-latest.html")
-        BenchmarkHtmlReporter.write(htmlFile, metrics, previous)
-
-        Log.i(TAG, "Benchmark results written to ${jsonFile.absolutePath} and ${htmlFile.absolutePath}")
+        Log.i(TAG, "Benchmark results written to ${jsonFile.absolutePath}")
         return metrics
     }
 
@@ -116,11 +110,6 @@ object BenchmarkSDK {
         }
         manualMetrics.forEach { (k,v) -> dest[k] = v }
     }
-
-    private fun findPreviousResult(dir: File, current: File): Map<String, Any>? = dir.listFiles()
-        ?.filter { it.isFile && it.extension == "json" && it != current }
-        ?.maxByOrNull { it.lastModified() }
-        ?.let { BenchmarkJsonWriter.read(it) }
 
     data class NetworkBenchmarkResult(
         val url: String,

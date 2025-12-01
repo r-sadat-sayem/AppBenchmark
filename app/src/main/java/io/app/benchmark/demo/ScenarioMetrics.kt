@@ -40,32 +40,20 @@ object ScenarioMetrics {
     }
 
     private fun checkApi1NetwrokMetrics() {
-        val aviationResult = BenchmarkSDK.realNetworkRequest(
-            url = "https://aviationweather.gov/api/data/metar?ids=KMCI&format=json",
-            metricPrefix = "network_aviation"
-        )
-        aviationResult.let {
-            val contentLength: Number = it.responseLength ?: 0
-            BenchmarkSDK.recordMetric("network_AviationContentLength", contentLength)
-            BenchmarkSDK.recordMetric("network_AviationStatusCode", it.responseCode ?: 0)
-            BenchmarkSDK.recordMetric("network_AviationLatencyMs", it.durationMs)
-        }
         if (scenario == Scenario.HEAVY) {
             Thread.sleep(2000) // Add artificial delay for heavy scenario
         }
+        BenchmarkSDK.realNetworkRequest(
+            url = "https://aviationweather.gov/api/data/metar?ids=KMCI&format=json",
+            metricPrefix = "network_aviation"
+        )
     }
 
     private fun checkApi2NetwrokMetrics() {
-        val googleResult = BenchmarkSDK.realNetworkRequest(
+        BenchmarkSDK.realNetworkRequest(
             url = "https://www.google.com",
             metricPrefix = "network_google"
         )
-        googleResult.let {
-            val contentLength: Number = it.responseLength ?: 0
-            BenchmarkSDK.recordMetric("network_googleContentLength", contentLength)
-            BenchmarkSDK.recordMetric("network_googleStatusCode", it.responseCode ?: 0)
-            BenchmarkSDK.recordMetric("network_googleLatencyMs", it.durationMs)
-        }
         if (scenario == Scenario.HEAVY) {
             Thread.sleep(3000) // Add artificial delay for heavy scenario
         }

@@ -14,7 +14,7 @@ tasks.register("generateBenchmarkReport", Exec::class.java) {
     description = "Generates single scenario comparison report (baseline vs heavy)."
     workingDir = project.rootDir
 
-    val resultsDir = project.rootDir.resolve("benchmark-results")
+    val resultsDir = project.rootDir.resolve("benchmark-results/benchmarks/")
     val scriptFile = project.rootDir.resolve("benchmark-sdk/scripts/generate_report.py")
     val reportName = "report.html"
 
@@ -54,9 +54,31 @@ tasks.register("generateBenchmarkReport", Exec::class.java) {
 // 2. Dynamic aggregate Gradle task to run benchmarks across variants.
 tasks.register("runBenchmarks") {
     group = "benchmark"
-    description = "Runs selected connectedAndroidTest variant tasks then generates and archives reports per run."
-    doFirst { println("Preparing benchmark variant tasks...") }
-    doLast { println("Benchmarks complete. See benchmark-results/ for JSON & HTML history.") }
+    description = "Installs and launches both variants, simulates persisting metrics, and generates reports."
+    doFirst {
+        println("Installing and launching baselineDebug variant...")
+        exec {
+            commandLine("./gradlew", "installBaselineDebug")
+        }
+        println("Launching baselineDebug app and simulating persist...")
+        exec {
+            commandLine("adb", "shell", "am", "start", "-n", "io.app.benchmark/io.app.benchmark.MainActivity")
+        }
+        Thread.sleep(4000) // Wait for app to start and persist metrics
+
+        println("Installing and launching heavyDebug variant...")
+        exec {
+            commandLine("./gradlew", "installHeavyDebug")
+        }
+        println("Launching heavyDebug app and simulating persist...")
+        exec {
+            commandLine("adb", "shell", "am", "start", "-n", "io.app.benchmark/io.app.benchmark.MainActivity")
+        }
+        Thread.sleep(4000) // Wait for app to start and persist metrics
+    }
+    doLast {
+        println("Benchmarks complete. See benchmark-results/ for JSON & HTML history.")
+    }
 }
 
 gradle.projectsEvaluated {
