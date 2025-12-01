@@ -25,8 +25,8 @@ tasks.register<Exec>("generateBenchmarkReport") {
 
     doFirst {
         resultsDir.mkdirs()
-        val baseline = resultsDir.resolve("benchmark-baseline.json")
-        val heavy = resultsDir.resolve("benchmark-heavy.json")
+        val baseline = resultsDir.resolve("benchmark-results/benchmarks/benchmark-baseline.json")
+        val heavy = resultsDir.resolve("benchmark-results/benchmarks/benchmark-heavy.json")
         // Attempt to pull from device if adb available and files missing
         fun pullScenario(name: String) {
             val target = resultsDir.resolve("benchmark-$name.json")
