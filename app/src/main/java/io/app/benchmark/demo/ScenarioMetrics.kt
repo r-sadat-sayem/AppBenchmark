@@ -46,9 +46,9 @@ object ScenarioMetrics {
         )
         aviationResult.let {
             val contentLength: Number = it.responseLength ?: 0
-            BenchmarkSDK.recordMetric("aviationContentLength", contentLength)
-            BenchmarkSDK.recordMetric("aviationStatusCode", it.responseCode ?: 0)
-            BenchmarkSDK.recordMetric("aviationLatencyMs", it.durationMs)
+            BenchmarkSDK.recordMetric("network_AviationContentLength", contentLength)
+            BenchmarkSDK.recordMetric("network_AviationStatusCode", it.responseCode ?: 0)
+            BenchmarkSDK.recordMetric("network_AviationLatencyMs", it.durationMs)
         }
         if (scenario == Scenario.HEAVY) {
             Thread.sleep(2000) // Add artificial delay for heavy scenario
@@ -62,9 +62,9 @@ object ScenarioMetrics {
         )
         googleResult.let {
             val contentLength: Number = it.responseLength ?: 0
-            BenchmarkSDK.recordMetric("aviationContentLength", contentLength)
-            BenchmarkSDK.recordMetric("aviationStatusCode", it.responseCode ?: 0)
-            BenchmarkSDK.recordMetric("aviationLatencyMs", it.durationMs)
+            BenchmarkSDK.recordMetric("network_googleContentLength", contentLength)
+            BenchmarkSDK.recordMetric("network_googleStatusCode", it.responseCode ?: 0)
+            BenchmarkSDK.recordMetric("network_googleLatencyMs", it.durationMs)
         }
         if (scenario == Scenario.HEAVY) {
             Thread.sleep(3000) // Add artificial delay for heavy scenario

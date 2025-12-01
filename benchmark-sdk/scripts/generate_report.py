@@ -80,5 +80,32 @@ report_data = {
     "other": make_rows(other_keys) if other_keys else [],
 }
 
+# --- Overall performance summary ---
+all_changes = []
+for section in [report_data["cpu_os"], report_data["memory"], report_data["network"], report_data["other"]]:
+    for row in section:
+        if row["change"] is not None:
+            all_changes.append(row["change"])
+if all_changes:
+    avg_change = sum(all_changes) / len(all_changes)
+    avg_change_fmt = float(f"{avg_change:.3f}")
+    if avg_change_fmt > 10:
+        status = "Degraded"
+    elif avg_change_fmt < -10:
+        status = "Improved"
+    else:
+        status = "No Significant Change"
+    report_data["overall_performance"] = {
+        "average_change": avg_change_fmt,
+        "status": status,
+        "summary": f"Overall performance change: {avg_change_fmt}% ({status})"
+    }
+else:
+    report_data["overall_performance"] = {
+        "average_change": None,
+        "status": "Unknown",
+        "summary": "Insufficient data for overall performance summary."
+    }
+
 report_json_path.write_text(json.dumps(report_data, indent=2))
 print(f"Report data generated: {report_json_path}")

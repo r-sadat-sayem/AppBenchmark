@@ -33,7 +33,7 @@ tasks.register("generateBenchmarkReport", Exec::class.java) {
             if (!target.exists()) {
                 try {
                     println("Attempting adb pull for scenario: $name")
-                    exec {
+                    project.exec {
                         commandLine("adb", "pull", "/sdcard/Android/data/io.app.benchmark/files/benchmarks/benchmark-$name.json", target.absolutePath)
                     }
                     if (target.exists()) println("Pulled benchmark-$name.json from device.")
@@ -47,6 +47,7 @@ tasks.register("generateBenchmarkReport", Exec::class.java) {
         if (!baseline.exists()) println("Baseline scenario file missing: $baseline")
         if (!heavy.exists()) println("Heavy scenario file missing: $heavy")
     }
+
     doLast { println("Scenario comparison report generated (if both scenario files were present).") }
 }
 
