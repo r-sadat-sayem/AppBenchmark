@@ -1,7 +1,8 @@
 package io.app.benchmark
 
 import android.os.Bundle
- import android.widget.Toast
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,8 +20,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        ScenarioMetrics.init()
         ScenarioMetrics.runScenarios()
+        val actualMetrics = BenchmarkSDK.getActualRuntimeMetrics()
+        Log.i("BenchmarkSDK", "Actual runtime metrics: $actualMetrics")
         BenchmarkSDK.setScenario(BuildConfig.BENCH_SCENARIO)
         // Automatically persist scenario metrics on startup
         BenchmarkSDK.collectScenarioAndPersist(this)
@@ -29,7 +31,8 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     BenchmarkScreen(modifier = Modifier.padding(innerPadding)) {
                         val file = BenchmarkSDK.collectScenarioAndPersist(this@MainActivity)
-                        Toast.makeText(this@MainActivity, "Scenario metrics saved: ${file.name}", Toast.LENGTH_SHORT).show()
+                        val actualMetrics = BenchmarkSDK.getActualRuntimeMetrics()
+                        Toast.makeText(this@MainActivity, "Scenario metrics saved: ${file.name}\nActual: $actualMetrics", Toast.LENGTH_LONG).show()
                     }
                 }
             }

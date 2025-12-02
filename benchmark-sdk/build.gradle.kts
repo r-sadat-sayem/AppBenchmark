@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.androidx.benchmark)
 }
 
 android {
@@ -34,5 +35,8 @@ dependencies {
     implementation(libs.moshi)
     implementation(libs.moshi.kotlin)
     implementation(libs.moshi.kotlin.codegen)
+    implementation(libs.androidx.benchmark.common)
+    androidTestImplementation(libs.androidx.benchmark.junit4)
+    androidTestImplementation(libs.androidx.benchmark.macro)
 }
 

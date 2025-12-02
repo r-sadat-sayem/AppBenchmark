@@ -12,22 +12,6 @@ object ScenarioMetrics {
     }
     private var retained: List<ByteArray>? = null
 
-    fun init() {
-        // Stable cache hit rate differences
-        BenchmarkSDK.registerMetricProvider("cacheHitRate") {
-            when (scenario) {
-                Scenario.BASELINE -> 0.92
-                Scenario.HEAVY -> 0.58 + Random.nextDouble(0.02)
-            }
-        }
-        BenchmarkSDK.registerMetricProvider("simulatedNetworkLatencyMs") {
-            when (scenario) {
-                Scenario.BASELINE -> 85.0
-                Scenario.HEAVY -> 195.0
-            }
-        }
-    }
-
     fun runScenarios() {
         cpuLoop()
         allocateMemory()

@@ -3,7 +3,6 @@ package io.app.benchmark.demo
 
 import io.app.benchmark.BuildConfig
 import io.app.benchmark.sdk.BenchmarkSDK
-import kotlin.random.Random
 
 object ScenarioMetrics {
     private enum class Scenario { BASELINE, HEAVY }
@@ -13,23 +12,6 @@ object ScenarioMetrics {
     }
 
     private var retained: List<ByteArray>? = null
-
-    fun init() {
-        // Deterministic(ish) cache hit rate by scenario.
-        BenchmarkSDK.registerMetricProvider("cacheHitRate") {
-            when (scenario) {
-                Scenario.BASELINE -> 0.92
-                Scenario.HEAVY -> 0.58 + Random.nextDouble(0.02)
-            }
-        }
-        // Network latency provider.
-        BenchmarkSDK.registerMetricProvider("simulatedNetworkLatencyMs") {
-            when (scenario) {
-                Scenario.BASELINE -> 90.0
-                Scenario.HEAVY -> 195.0
-            }
-        }
-    }
 
     fun runScenarios() {
         cpuLoop()
@@ -80,10 +62,13 @@ object ScenarioMetrics {
     }
 
     private fun mockNetwork() {
-        BenchmarkSDK.timeScenario("simulatedRequestMs") {
-            val delayMs = if (scenario == Scenario.BASELINE) 60L else 170L
-            Thread.sleep(delayMs)
-            delayMs
-        }
+        // Use real network request to measure latency
+        val url = "https://www.google.com" // You can change to any endpoint
+        val result = BenchmarkSDK.realNetworkRequest(
+            url = url,
+            metricPrefix = "network_mock"
+        )
+        // Optionally, record the measured latency for dynamic provider usage
+        BenchmarkSDK.recordMetric("measuredNetworkLatencyMs", result.durationMs)
     }
 }

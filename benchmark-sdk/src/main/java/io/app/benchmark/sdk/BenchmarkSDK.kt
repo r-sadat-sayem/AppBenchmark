@@ -15,7 +15,6 @@ import kotlin.math.roundToLong
 object BenchmarkSDK {
     private const val TAG = "BenchmarkSDK"
 
-    private val customMetricProviders = ConcurrentHashMap<String, () -> Number>()
     private var startupRecorded = false
     private var startupDurationMs: Long? = null
     private val manualMetrics = ConcurrentHashMap<String, Number>()
@@ -29,11 +28,6 @@ object BenchmarkSDK {
             startupRecorded = true
             Log.d(TAG, "Startup time captured: ${startupDurationMs}ms")
         }
-    }
-
-    /** Register a custom metric provider. */
-    fun registerMetricProvider(name: String, provider: () -> Number) {
-        customMetricProviders[name] = provider
     }
 
     /** Record a numeric metric explicitly (e.g., scenario duration ms). */
@@ -82,6 +76,27 @@ object BenchmarkSDK {
         return taggedFile
     }
 
+    /** Get actual runtime metrics from the app process and OS. */
+    fun getActualRuntimeMetrics(): Map<String, Any> {
+        val metrics = LinkedHashMap<String, Any>()
+        // Memory
+        val pssKb = Debug.getPss()
+        val runtime = Runtime.getRuntime()
+        val usedMem = (runtime.totalMemory() - runtime.freeMemory())
+        metrics["memoryPssKb"] = pssKb
+        metrics["memoryUsedBytes"] = usedMem
+        metrics["memoryHeapMaxBytes"] = runtime.maxMemory()
+        // CPU
+        val cpuTimeMs = Process.getElapsedCpuTime()
+        metrics["processCpuTimeMs"] = cpuTimeMs
+        // Derived metric: memory usage percent of max
+        val percent = if (runtime.maxMemory() > 0) (usedMem.toDouble() / runtime.maxMemory().toDouble()) * 100 else 0.0
+        metrics["memoryUsagePercent"] = (percent * 100).roundToLong() / 100.0
+        // Optionally, add network latency if available
+        manualMetrics["measuredNetworkLatencyMs"]?.let { metrics["measuredNetworkLatencyMs"] = it }
+        return metrics
+    }
+
     private fun collectRuntimeMetrics(dest: MutableMap<String, Any>) {
         // Memory
         val pssKb = Debug.getPss() // in KB
@@ -101,13 +116,6 @@ object BenchmarkSDK {
     }
 
     private fun collectCustom(dest: MutableMap<String, Any>) {
-        customMetricProviders.forEach { (k, v) ->
-            try {
-                dest[k] = v().toDouble()
-            } catch (t: Throwable) {
-                dest["${k}__error"] = t.javaClass.simpleName
-            }
-        }
         manualMetrics.forEach { (k,v) -> dest[k] = v }
     }
 
