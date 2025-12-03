@@ -63,6 +63,12 @@ android {
         buildConfig = true
         compose = true
     }
+
+    testOptions {
+        unitTests.all {
+            it.useJUnitPlatform() // optional, for unit tests only
+        }
+    }
 }
 
 dependencies {
@@ -75,15 +81,16 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    testImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.junit)
+    implementation(libs.androidx.junit)
+    implementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(project(":benchmark-sdk"))
-//    androidTestImplementation(libs.androidx.benchmark.common)
-//    androidTestImplementation(libs.androidx.benchmark.junit4)
-//    androidTestImplementation(libs.androidx.benchmark.macro)
+
+    implementation(libs.androidx.runner)
+    implementation(libs.androidx.junit)
+    implementation(libs.androidx.espresso.core)
 }

@@ -40,6 +40,67 @@ object BenchmarkSDK {
         scenarioLabel = label
     }
 
+    /**
+     * Define a custom metric with metadata for proper reporting and analysis.
+     * This allows applications to add new metrics without modifying the SDK schema.
+     *
+     * @param name Unique metric identifier
+     * @param category Category for grouping (e.g., "database", "cache")
+     * @param displayName Human-readable name for reports
+     * @param unit Unit of measurement (e.g., "ms", "bytes", "count")
+     * @param lowerIsBetter Whether lower values indicate better performance
+     * @param description Optional description of what this metric measures
+     * @param thresholds Optional performance thresholds for severity assessment
+     */
+    fun defineMetric(
+        name: String,
+        category: String,
+        displayName: String,
+        unit: String,
+        lowerIsBetter: Boolean = true,
+        description: String? = null,
+        thresholds: MetricThresholds? = null
+    ) {
+        val metadata = MetricMetadata(
+            name = name,
+            category = category,
+            displayName = displayName,
+            unit = unit,
+            lowerIsBetter = lowerIsBetter,
+            description = description,
+            thresholds = thresholds
+        )
+        MetricRegistry.registerMetric(metadata)
+        Log.d(TAG, "Registered custom metric: $name in category $category")
+    }
+
+    /**
+     * Define a custom category for organizing metrics.
+     *
+     * @param id Unique category identifier
+     * @param displayName Human-readable category name
+     * @param icon Optional icon or emoji
+     * @param description Optional category description
+     * @param order Display order (lower numbers appear first)
+     */
+    fun defineCategory(
+        id: String,
+        displayName: String,
+        icon: String? = null,
+        description: String? = null,
+        order: Int = 999
+    ) {
+        val metadata = CategoryMetadata(
+            id = id,
+            displayName = displayName,
+            icon = icon,
+            description = description,
+            order = order
+        )
+        MetricRegistry.registerCategory(metadata)
+        Log.d(TAG, "Registered custom category: $id")
+    }
+
     /** Time a scenario and record its duration (ms) under the provided metric name. */
     inline fun <T> timeScenario(metricName: String, block: () -> T): T {
         val start = SystemClock.elapsedRealtime()

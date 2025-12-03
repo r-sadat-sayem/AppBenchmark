@@ -15,11 +15,16 @@ import androidx.compose.ui.unit.dp
 import io.app.benchmark.demo.ScenarioMetrics
 import io.app.benchmark.ui.theme.SampleAppBenchmarkTheme
 import io.app.benchmark.sdk.BenchmarkSDK
+import io.app.benchmark.sdk.MetricThresholds
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Demo: Register custom metrics and categories (Phase 1 feature)
+        setupCustomMetrics()
+
         ScenarioMetrics.runScenarios()
         val actualMetrics = BenchmarkSDK.getActualRuntimeMetrics()
         Log.i("BenchmarkSDK", "Actual runtime metrics: $actualMetrics")
@@ -37,6 +42,53 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * Example: Define custom metrics with metadata.
+     * This demonstrates Phase 1 capability - apps can now define their own metrics
+     * with proper categorization, units, and thresholds without modifying SDK code.
+     */
+    private fun setupCustomMetrics() {
+        // Define a custom category for database operations
+        BenchmarkSDK.defineCategory(
+            id = "database",
+            displayName = "Database & Storage",
+            icon = "💾",
+            description = "Database query times and storage operations",
+            order = 3
+        )
+
+        // Define custom metrics with metadata
+        BenchmarkSDK.defineMetric(
+            name = "databaseQueryMs",
+            category = "database",
+            displayName = "Database Query Time",
+            unit = "ms",
+            lowerIsBetter = true,
+            description = "Average time for database SELECT queries",
+            thresholds = MetricThresholds(
+                good = 50,
+                warning = 150,
+                critical = 300
+            )
+        )
+
+        BenchmarkSDK.defineMetric(
+            name = "cacheHitRate",
+            category = "database",
+            displayName = "Cache Hit Rate",
+            unit = "%",
+            lowerIsBetter = false, // Higher is better for cache hits
+            description = "Percentage of requests served from cache",
+            thresholds = MetricThresholds(
+                good = 80,
+                warning = 50,
+                critical = 20
+            )
+        )
+
+        Log.d("BenchmarkSDK", "Custom metrics and categories registered")
     }
 }
 

@@ -4,54 +4,322 @@ This project contains a sample Android app and a lightweight Benchmark SDK libra
 
 - Startup time measurement (process start -> first UI ready)
 - Memory & CPU usage metrics
-- Custom metric registration API
+- **NEW: Unified metric schema with metadata** (Phase 1 complete! 🎉)
+- **NEW: Custom metric/category definition API**
 - JSON + HTML report generation with automatic diff vs previous run
 - Simple Gradle task `runBenchmarks` for CI
 - **Real network benchmarking** using aviationweather.gov API (see below)
+
+## 🆕 What's New - Phase 1: Unified Metric Schema
+
+The SDK now supports a **standardized metric schema** that allows you to:
+
+✅ Define custom metrics with metadata (units, thresholds, descriptions)  
+✅ Create custom categories for organizing metrics  
+✅ Set performance thresholds for automatic severity assessment  
+✅ All without modifying SDK code!
+
+**Quick Example:**
+```kotlin
+BenchmarkSDK.defineMetric(
+    name = "databaseQueryMs",
+    category = "database",
+    displayName = "Database Query Time",
+    unit = "ms",
+    thresholds = MetricThresholds(good = 50, warning = 150, critical = 300)
+)
+BenchmarkSDK.recordMetric("databaseQueryMs", 75)
+```
+
+📖 **Documentation:**
+- [Quick Start Guide](QUICKSTART_CUSTOM_METRICS.md) - Add custom metrics in 5 minutes
+- [Workflow Guide](BENCHMARK_WORKFLOW.md) - Complete benchmarking workflow & troubleshooting
+- [Schema Guide](benchmark-sdk/SCHEMA_GUIDE.md) - Metric schema reference
+- [API Documentation](API_DOCUMENTATION.md) - Complete SDK API
+- [Phase 1 Complete](PHASE1_COMPLETE.md) - All Phase 1 changes & how runBenchmarks works
 
 ## Modules
 - `app`: Sample application using Jetpack Compose
 - `benchmark-sdk`: Reusable benchmarking SDK (can be published as a dependency)
 
-## Quick Start (Local)
+## 🚀 Quick Start: Running Benchmarks
+
+### Single Command Workflow
+
+Run the complete benchmark suite with one command:
+
 ```bash
 ./gradlew runBenchmarks
 ```
-Pull results from device/emulator:
+
+This will automatically:
+1. ✅ Run instrumented tests for `baseline` and `heavy` scenarios
+2. ✅ Pull JSON metrics from device storage via adb
+3. ✅ Generate HTML comparison report
+4. ✅ Output report location: `benchmark-results/benchmarks/report.html`
+
+### Advanced Usage
+
+**Run specific flavors:**
+```bash
+./gradlew runBenchmarks -PbenchFlavors=baseline
+./gradlew runBenchmarks -PbenchFlavors=baseline,heavy
+```
+
+**Run specific variants:**
+```bash
+./gradlew runBenchmarks -PbenchVariants=baselineDebug
+```
+
+**Generate report only (skip tests):**
+```bash
+./gradlew generateBenchmarkReport
+```
+
+**Manual file extraction:**
 ```bash
 adb shell ls /sdcard/Android/data/io.app.benchmark/files/benchmarks
 adb pull /sdcard/Android/data/io.app.benchmark/files/benchmarks ./benchmark-results
 ```
 
-## Real Network Benchmark Example
-The sample app demonstrates benchmarking a real network request:
+## 🎯 Product Flavors (Benchmark Scenarios)
 
-- **Baseline scenario**: Measures actual latency for a GET request to `https://aviationweather.gov/api/data/metar?ids=KMCI&format=json`.
-- **Heavy scenario**: Measures the same request, then adds a 3000ms artificial delay to simulate stress.
+The project uses **Android product flavors** to define benchmark scenarios:
 
-To run both scenarios, set `BENCH_SCENARIO` in your build config to `baseline` or `heavy`.
+| Flavor | Purpose | App ID | Configuration |
+|--------|---------|--------|---------------|
+| **baseline** | Standard/minimal configuration | `io.app.benchmark.baseline` | Normal features, light workload |
+| **heavy** | Stress test/maximum load | `io.app.benchmark.heavy` | All features enabled, heavy workload |
 
-## Adding to Another Project
-1. Publish `benchmark-sdk` (MavenLocal or remote) or copy module.
-2. Add dependency:
+### Why Product Flavors?
+
+✅ **Single codebase** - Share code, different configurations  
+✅ **Easy A/B testing** - Direct performance comparison  
+✅ **Gradle automation** - Automatically handles installation and testing  
+✅ **Isolated testing** - Each flavor runs independently  
+
+### Customizing Scenarios
+
+Edit `app/build.gradle.kts` to customize each flavor:
+
 ```kotlin
-implementation("io.app.benchmark:benchmark-sdk:<version>")
-```
-3. For Compose, call `BenchmarkSDK.onAppReady()` after first frame; for XML you can rely on automatic detection.
-4. Trigger collection (instrumentation test or manual button):
-```kotlin
-BenchmarkSDK.collectAndPersist(context)
+productFlavors {
+    create("baseline") {
+        dimension = "scenario"
+        buildConfigField("Int", "MAX_CACHE_SIZE_MB", "50")
+        buildConfigField("Boolean", "ENABLE_ANALYTICS", "false")
+        buildConfigField("Int", "NETWORK_THREADS", "2")
+    }
+    
+    create("heavy") {
+        dimension = "scenario"
+        buildConfigField("Int", "MAX_CACHE_SIZE_MB", "500")
+        buildConfigField("Boolean", "ENABLE_ANALYTICS", "true")
+        buildConfigField("Int", "NETWORK_THREADS", "20")
+    }
+}
 ```
 
-## CI Integration Examples
-GitHub Actions step (assuming emulator already started):
+Then use in your code:
+```kotlin
+val cacheSize = BuildConfig.MAX_CACHE_SIZE_MB
+val analyticsEnabled = BuildConfig.ENABLE_ANALYTICS
+```
+
+## 🧪 Example Benchmark Test
+
+The sample app demonstrates real-world benchmarking:
+
+**Baseline scenario:**
+- Measures actual network latency to `aviationweather.gov`
+- Normal memory allocation patterns
+- Standard CPU usage
+
+**Heavy scenario:**
+- Same network request + 3000ms artificial delay
+- Large memory allocations
+- CPU-intensive operations
+
+Both scenarios auto-persist metrics to device storage on app launch.
+
+## 📊 Report Generation
+
+After running tests, the Python script generates a comparison report:
+
+**Input:** `benchmark-baseline.json` + `benchmark-heavy.json`  
+**Output:** `benchmark-results/benchmarks/report.html`
+
+The report includes:
+- CPU & Performance metrics
+- Memory & Heap usage
+- Network latency and response times
+- Custom metrics (if defined)
+- Change percentage with severity indicators
+
+## 🔧 Adding to Another Project
+
+1. Copy the `benchmark-sdk` module to your project
+2. Add to `settings.gradle.kts`:
+```kotlin
+include(":benchmark-sdk")
+```
+3. Add dependency in your app's `build.gradle.kts`:
+```kotlin
+implementation(project(":benchmark-sdk"))
+```
+4. Define custom metrics (optional):
+```kotlin
+BenchmarkSDK.defineMetric(
+    name = "myCustomMetric",
+    category = "custom",
+    displayName = "My Custom Metric",
+    unit = "ms",
+    thresholds = MetricThresholds(good = 100, warning = 500, critical = 1000)
+)
+```
+5. Collect metrics in tests or debug code:
+```kotlin
+BenchmarkSDK.collectScenarioAndPersist(context)
+```
+
+## 🚀 CI/CD Integration
+
+### GitHub Actions
+
 ```yaml
-- name: Run Benchmarks
-  run: ./gradlew runBenchmarks
-- name: Pull Results
-  run: |
-    adb pull /sdcard/Android/data/io.app.benchmark/files/benchmarks benchmark-results
-- uses: actions/upload-artifact@v4
+name: Benchmark Tests
+
+on: [push, pull_request]
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      
+      - name: Start Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          script: |
+            ./gradlew runBenchmarks
+      
+      - name: Upload Benchmark Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-report
+          path: benchmark-results/benchmarks/
+          retention-days: 30
+      
+      - name: Comment PR with Results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('benchmark-results/benchmarks/report.json', 'utf8');
+            const data = JSON.parse(report);
+            const summary = data.overall_performance?.summary || 'No summary available';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 📊 Benchmark Results\n\n${summary}\n\n[View Full Report](${process.env.GITHUB_SERVER_URL}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            });
+```
+
+### Jenkins
+
+```groovy
+pipeline {
+    agent any
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Run Benchmarks') {
+            steps {
+                sh './gradlew runBenchmarks'
+            }
+        }
+        
+        stage('Publish Report') {
+            steps {
+                publishHTML([
+                    reportDir: 'benchmark-results/benchmarks',
+                    reportFiles: 'report.html',
+                    reportName: 'Benchmark Report',
+                    keepAll: true,
+                    alwaysLinkToLastBuild: true
+                ])
+            }
+        }
+    }
+    
+    post {
+        always {
+            archiveArtifacts artifacts: 'benchmark-results/**/*.json', allowEmptyArchive: true
+        }
+    }
+}
+```
+
+### GitLab CI
+
+```yaml
+benchmark:
+  stage: test
+  image: cirrusci/flutter:latest
+  
+  before_script:
+    - apt-get update && apt-get install -y python3
+  
+  script:
+    - ./gradlew runBenchmarks
+  
+  artifacts:
+    paths:
+      - benchmark-results/
+    reports:
+      junit: app/build/outputs/androidTest-results/connected/*.xml
+    expire_in: 30 days
+  
+  only:
+    - merge_requests
+    - main
+```
+
+## 📈 Viewing Results
+
+After running benchmarks, open the generated report:
+
+```bash
+open benchmark-results/benchmarks/report.html
+# or
+xdg-open benchmark-results/benchmarks/report.html  # Linux
+```
+
+The report shows:
+- ⚡ CPU & Performance comparisons
+- 🧠 Memory usage trends
+- 🌐 Network latency analysis
+- 📊 Change percentages with severity indicators
+- 🎯 Custom metrics (if defined)
   with:
     name: benchmark-results
     path: benchmark-results

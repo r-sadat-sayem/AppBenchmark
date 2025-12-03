@@ -1,0 +1,279 @@
+{
+  "version": "1.0",
+  "schemaDescription": "Unified metric schema for BenchmarkSDK - defines categories, metrics, and their metadata",
+  "lastUpdated": "2025-12-03",
+  "categories": {
+    "cpu": {
+      "displayName": "CPU & Performance",
+      "icon": "⚡",
+      "description": "CPU usage, processing time, and performance-related metrics",
+      "order": 1
+    },
+    "memory": {
+      "displayName": "Memory & Heap",
+      "icon": "🧠",
+      "description": "Memory allocation, heap usage, and memory leak detection",
+      "order": 2
+    },
+    "network": {
+      "displayName": "Network & API",
+      "icon": "🌐",
+      "description": "Network requests, latency, response times, and connectivity",
+      "order": 3
+    },
+    "ui": {
+      "displayName": "UI & Rendering",
+      "icon": "🎨",
+      "description": "UI rendering, frame drops, and user interface performance",
+      "order": 4
+    },
+    "startup": {
+      "displayName": "App Startup",
+      "icon": "🚀",
+      "description": "Application initialization and startup time metrics",
+      "order": 5
+    },
+    "storage": {
+      "displayName": "Storage & Database",
+      "icon": "💾",
+      "description": "File I/O, database operations, and storage performance",
+      "order": 6
+    },
+    "build": {
+      "displayName": "Build & Configuration",
+      "icon": "📦",
+      "description": "Build artifacts, configuration, and static metadata",
+      "order": 7
+    },
+    "custom": {
+      "displayName": "Custom Metrics",
+      "icon": "⚙️",
+      "description": "User-defined and application-specific metrics",
+      "order": 8
+    }
+  },
+  "metrics": {
+    "startupTimeMs": {
+      "category": "startup",
+      "displayName": "Startup Time",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time from process start to first UI frame ready",
+      "thresholds": {
+        "good": 1000,
+        "warning": 2000,
+        "critical": 3000
+      }
+    },
+    "cpuHeavyLoopMs": {
+      "category": "cpu",
+      "displayName": "CPU Heavy Loop Duration",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Duration of CPU-intensive computation loop",
+      "thresholds": {
+        "good": 50,
+        "warning": 100,
+        "critical": 200
+      }
+    },
+    "processCpuTimeMs": {
+      "category": "cpu",
+      "displayName": "Process CPU Time",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Total CPU time consumed by the process",
+      "thresholds": {
+        "good": 500,
+        "warning": 1000,
+        "critical": 2000
+      }
+    },
+    "memoryPssKb": {
+      "category": "memory",
+      "displayName": "Memory PSS",
+      "unit": "KB",
+      "lowerIsBetter": true,
+      "description": "Proportional Set Size - actual memory used by process",
+      "thresholds": {
+        "good": 50000,
+        "warning": 100000,
+        "critical": 200000
+      }
+    },
+    "memoryUsedBytes": {
+      "category": "memory",
+      "displayName": "Heap Memory Used",
+      "unit": "bytes",
+      "lowerIsBetter": true,
+      "description": "Current heap memory usage",
+      "thresholds": {
+        "good": 50000000,
+        "warning": 100000000,
+        "critical": 200000000
+      }
+    },
+    "memoryHeapMaxBytes": {
+      "category": "memory",
+      "displayName": "Max Heap Size",
+      "unit": "bytes",
+      "lowerIsBetter": false,
+      "description": "Maximum available heap memory",
+      "thresholds": {
+        "good": 200000000,
+        "warning": 100000000,
+        "critical": 50000000
+      }
+    },
+    "memoryUsagePercent": {
+      "category": "memory",
+      "displayName": "Memory Usage %",
+      "unit": "%",
+      "lowerIsBetter": true,
+      "description": "Percentage of heap memory used vs max available",
+      "thresholds": {
+        "good": 50,
+        "warning": 75,
+        "critical": 90
+      }
+    },
+    "memoryAllocationMs": {
+      "category": "memory",
+      "displayName": "Memory Allocation Time",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time taken to allocate memory in benchmark scenario",
+      "thresholds": {
+        "good": 10,
+        "warning": 50,
+        "critical": 100
+      }
+    },
+    "measuredNetworkLatencyMs": {
+      "category": "network",
+      "displayName": "Network Latency",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Measured network request latency",
+      "thresholds": {
+        "good": 200,
+        "warning": 500,
+        "critical": 1000
+      }
+    },
+    "network_*_requestMs": {
+      "category": "network",
+      "displayName": "Network Request Duration",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Duration of network request (wildcard pattern)",
+      "thresholds": {
+        "good": 300,
+        "warning": 1000,
+        "critical": 3000
+      },
+      "pattern": true
+    },
+    "network_*_responseCode": {
+      "category": "network",
+      "displayName": "HTTP Response Code",
+      "unit": "code",
+      "lowerIsBetter": false,
+      "description": "HTTP response status code (wildcard pattern)",
+      "thresholds": {
+        "good": 299,
+        "warning": 399,
+        "critical": 499
+      },
+      "pattern": true
+    },
+    "network_*_responseLength": {
+      "category": "network",
+      "displayName": "Response Size",
+      "unit": "bytes",
+      "lowerIsBetter": false,
+      "description": "Size of HTTP response body (wildcard pattern)",
+      "pattern": true
+    },
+    "network_*_error": {
+      "category": "network",
+      "displayName": "Network Error",
+      "unit": "boolean",
+      "lowerIsBetter": true,
+      "description": "Network request error indicator (wildcard pattern)",
+      "thresholds": {
+        "good": 0,
+        "warning": 0,
+        "critical": 1
+      },
+      "pattern": true,
+      "highlightError": true
+    },
+    "simulatedRequestMs": {
+      "category": "network",
+      "displayName": "Simulated Request Time",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Simulated network request duration",
+      "thresholds": {
+        "good": 100,
+        "warning": 500,
+        "critical": 1000
+      }
+    },
+    "apkSizeBytes": {
+      "category": "build",
+      "displayName": "APK Size",
+      "unit": "bytes",
+      "lowerIsBetter": true,
+      "description": "Size of compiled APK file",
+      "thresholds": {
+        "good": 10000000,
+        "warning": 50000000,
+        "critical": 100000000
+      }
+    },
+    "buildConfig": {
+      "category": "build",
+      "displayName": "Build Configuration",
+      "unit": "object",
+      "lowerIsBetter": false,
+      "description": "Build metadata including version and configuration",
+      "isMetadata": true
+    },
+    "scenarioLabel": {
+      "category": "custom",
+      "displayName": "Scenario Label",
+      "unit": "string",
+      "lowerIsBetter": false,
+      "description": "Label identifying the benchmark scenario",
+      "isMetadata": true
+    }
+  },
+  "severityRules": {
+    "description": "Default severity calculation rules",
+    "changeThresholds": {
+      "critical": 50,
+      "warning": 20,
+      "minor": 5,
+      "normal": 0
+    },
+    "memoryLeakIndicators": [
+      "leak",
+      "retained",
+      "unreleased"
+    ],
+    "errorIndicators": [
+      "error",
+      "failed",
+      "exception"
+    ]
+  },
+  "displaySettings": {
+    "defaultSort": "severity",
+    "showEmptyCategories": false,
+    "highlightRegressions": true,
+    "compactMode": false
+  }
+}
+

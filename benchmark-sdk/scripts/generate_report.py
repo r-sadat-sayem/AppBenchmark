@@ -32,21 +32,46 @@ EXPECTED_METRICS = [
 ]
 
 def load_metrics(file: Path):
+    """Load metrics from benchmark JSON file.
+
+    Handles both new schema format (with schema_version and nested metrics)
+    and legacy format (direct metrics map).
+    Returns tuple: (metrics_dict, metadata_dict)
+    """
     try:
         data = json.loads(file.read_text())
-        return data.get("metrics", data)
-    except Exception:
-        return {}
+
+        # New schema format (v1.0+)
+        if "schema_version" in data:
+            metrics = data.get("metrics", {})
+            metadata = data.get("metadata", {})
+            return metrics, metadata
+
+        # Legacy format - all top-level keys are metrics
+        return data, {}
+    except Exception as e:
+        print(f"Error loading {file}: {e}")
+        return {}, {}
 
 if not baseline_file.exists() or not heavy_file.exists():
     report_json_path.write_text(json.dumps({
+        "schema_version": "1.0",
         "error": "Missing scenario files; need both benchmark-baseline.json and benchmark-heavy.json to compare."
     }))
     print(f"Missing scenario files; generated placeholder report: {report_json_path}")
     raise SystemExit(0)
 
-baseline = load_metrics(baseline_file)
-heavy = load_metrics(heavy_file)
+baseline, baseline_metadata = load_metrics(baseline_file)
+heavy, heavy_metadata = load_metrics(heavy_file)
+
+# Merge custom metadata from both scenarios
+custom_metrics_meta = {}
+custom_metrics_meta.update(baseline_metadata.get("custom_metrics", {}))
+custom_metrics_meta.update(heavy_metadata.get("custom_metrics", {}))
+
+custom_categories_meta = {}
+custom_categories_meta.update(baseline_metadata.get("custom_categories", {}))
+custom_categories_meta.update(heavy_metadata.get("custom_categories", {}))
 
 latest_file = max([baseline_file, heavy_file], key=lambda f: f.stat().st_mtime)
 latest_type = "baseline" if latest_file == baseline_file else "heavy"
@@ -114,6 +139,7 @@ collected_metrics = sorted(all_keys)
 missing_metrics = [m for m in EXPECTED_METRICS if not metric_found(m, all_keys)]
 
 report_data = {
+    "schema_version": "1.0",
     "latest_type": latest_type,
     "latest_time": latest_time,
     "collected_metrics": collected_metrics,
@@ -123,6 +149,14 @@ report_data = {
     "network": make_rows(network_keys, highlight_error=True),
     "other": make_rows(other_keys) if other_keys else [],
 }
+
+# Include custom metadata if present
+if custom_metrics_meta or custom_categories_meta:
+    report_data["metadata"] = {}
+    if custom_metrics_meta:
+        report_data["metadata"]["custom_metrics"] = custom_metrics_meta
+    if custom_categories_meta:
+        report_data["metadata"]["custom_categories"] = custom_categories_meta
 
 all_changes = [
     row["change"]

@@ -3,6 +3,8 @@
 ## Overview
 `BenchmarkSDK` is a plug-and-play library for collecting real runtime performance metrics in Android apps (API 28+). It is designed for easy integration and automatic reporting.
 
+**Schema Version:** 1.0 (supports unified metric schema with metadata)
+
 ## Public API
 
 ```kotlin
@@ -35,7 +37,34 @@ object BenchmarkSDK {
         method: String = "GET",
         body: String? = null
     ): NetworkBenchmarkResult
+    
+    /** NEW: Define a custom metric with metadata for proper reporting and analysis. */
+    fun defineMetric(
+        name: String,
+        category: String,
+        displayName: String,
+        unit: String,
+        lowerIsBetter: Boolean = true,
+        description: String? = null,
+        thresholds: MetricThresholds? = null
+    )
+    
+    /** NEW: Define a custom category for organizing metrics. */
+    fun defineCategory(
+        id: String,
+        displayName: String,
+        icon: String? = null,
+        description: String? = null,
+        order: Int = 999
+    )
 }
+
+/** Threshold values for metric severity assessment. */
+data class MetricThresholds(
+    val good: Number? = null,
+    val warning: Number? = null,
+    val critical: Number? = null
+)
 ```
 
 ## Usage Example
@@ -46,6 +75,27 @@ BenchmarkSDK.onAppReady()
 
 // Tag scenario
 BenchmarkSDK.setScenario("baseline")
+
+// NEW: Define custom metrics with metadata (Phase 1)
+BenchmarkSDK.defineCategory(
+    id = "database",
+    displayName = "Database Operations",
+    icon = "💾",
+    description = "Database query and transaction metrics"
+)
+
+BenchmarkSDK.defineMetric(
+    name = "databaseQueryMs",
+    category = "database",
+    displayName = "Database Query Time",
+    unit = "ms",
+    lowerIsBetter = true,
+    description = "Average time for SELECT queries",
+    thresholds = MetricThresholds(good = 50, warning = 150, critical = 300)
+)
+
+// Record the custom metric
+BenchmarkSDK.recordMetric("databaseQueryMs", 75)
 
 // Time a custom scenario
 BenchmarkSDK.timeScenario("customScenarioMs") {

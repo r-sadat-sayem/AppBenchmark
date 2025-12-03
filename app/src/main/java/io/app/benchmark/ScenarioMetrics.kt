@@ -1,7 +1,6 @@
 package io.app.benchmark
 
 import io.app.benchmark.sdk.BenchmarkSDK
-import kotlin.random.Random
 
 /** Provides deterministic baseline vs heavy scenario metrics to show report differences. */
 object ScenarioMetrics {
