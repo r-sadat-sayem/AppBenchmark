@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import time
+from collections import defaultdict
 
 root_dir = Path("benchmark-results/")
 results_dir = root_dir / "benchmarks"
@@ -9,6 +10,7 @@ results_dir.mkdir(parents=True, exist_ok=True)
 baseline_file = results_dir / "benchmark-baseline.json"
 heavy_file = results_dir / "benchmark-heavy.json"
 report_json_path = root_dir / "report.json"
+schema_file = Path("benchmark-sdk/schemas/metric-schema.json")
 
 EXPECTED_METRICS = [
     "startupTimeMs",
@@ -30,6 +32,18 @@ EXPECTED_METRICS = [
     "network_*_responseLength",
     "network_*_error",
 ]
+
+def load_schema():
+    """Load the metric schema defining categories and metric metadata."""
+    try:
+        if schema_file.exists():
+            return json.loads(schema_file.read_text())
+        else:
+            print(f"Warning: Schema file not found at {schema_file}, using basic defaults")
+            return {"categories": {}, "metrics": {}}
+    except Exception as e:
+        print(f"Error loading schema: {e}")
+        return {"categories": {}, "metrics": {}}
 
 def load_metrics(file: Path):
     """Load metrics from benchmark JSON file.
@@ -64,6 +78,11 @@ if not baseline_file.exists() or not heavy_file.exists():
 baseline, baseline_metadata = load_metrics(baseline_file)
 heavy, heavy_metadata = load_metrics(heavy_file)
 
+# Load schema
+schema = load_schema()
+schema_categories = schema.get("categories", {})
+schema_metrics = schema.get("metrics", {})
+
 # Merge custom metadata from both scenarios
 custom_metrics_meta = {}
 custom_metrics_meta.update(baseline_metadata.get("custom_metrics", {}))
@@ -73,18 +92,65 @@ custom_categories_meta = {}
 custom_categories_meta.update(baseline_metadata.get("custom_categories", {}))
 custom_categories_meta.update(heavy_metadata.get("custom_categories", {}))
 
+# Merge schema categories with custom categories
+all_category_metadata = {}
+all_category_metadata.update(schema_categories)
+all_category_metadata.update(custom_categories_meta)
+
+# Merge schema metrics with custom metrics
+all_metric_metadata = {}
+all_metric_metadata.update(schema_metrics)
+all_metric_metadata.update(custom_metrics_meta)
+
 latest_file = max([baseline_file, heavy_file], key=lambda f: f.stat().st_mtime)
 latest_type = "baseline" if latest_file == baseline_file else "heavy"
 latest_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(latest_file.stat().st_mtime))
 
 all_keys = set(baseline.keys()) | set(heavy.keys())
 
-cpu_os_keys = [k for k in all_keys if k.startswith(("cpu", "process", "startup", "os"))]
-memory_keys = [k for k in all_keys if k.startswith("memory") or "leak" in k.lower()]
-network_keys = [k for k in all_keys if k.startswith("network") or k.endswith(("requestMs", "responseCode", "responseLength", "error"))]
-other_keys = [k for k in all_keys if k not in cpu_os_keys + memory_keys + network_keys]
+def categorize_metric(metric_name):
+    """Determine category for a metric using schema metadata.
+
+    Returns the category name for the metric, or 'other' if not found.
+    """
+    # Direct lookup in merged metric metadata
+    if metric_name in all_metric_metadata:
+        return all_metric_metadata[metric_name].get("category", "other")
+
+    # Pattern matching for wildcard metrics (e.g., network_*_requestMs)
+    for pattern, meta in all_metric_metadata.items():
+        if meta.get("pattern", False) and "*" in pattern:
+            prefix = pattern.split("*")[0]
+            suffix = pattern.split("*")[-1]
+            if metric_name.startswith(prefix) and metric_name.endswith(suffix):
+                return meta.get("category", "other")
+
+    # Fallback: use string prefix heuristics
+    if metric_name.startswith(("cpu", "process")):
+        return "cpu"
+    elif metric_name.startswith("memory") or "leak" in metric_name.lower():
+        return "memory"
+    elif metric_name.startswith("network"):
+        return "network"
+    elif metric_name.startswith("startup"):
+        return "startup"
+    elif metric_name.startswith(("apk", "build")):
+        return "build"
+    elif metric_name.startswith(("database", "db", "storage")):
+        return "storage"
+    elif metric_name.startswith("ui"):
+        return "ui"
+
+    return "other"
+
+# Categorize all metrics dynamically
+categorized_metrics = defaultdict(list)
+for metric_key in all_keys:
+    category = categorize_metric(metric_key)
+    categorized_metrics[category].append(metric_key)
 
 def get_severity(row):
+    """Determine severity level based on metric thresholds and change percentage."""
     if row["highlight_leak"] or row["highlight_error"]:
         return "Needs Attention"
     change = row["change"]
@@ -100,7 +166,11 @@ def get_severity(row):
     else:
         return "Normal"
 
-def make_rows(keys, highlight_leak=False, highlight_error=False):
+def make_rows(keys, category_name="other"):
+    """Generate row data for metrics in a category.
+
+    Uses metadata to determine highlighting behavior.
+    """
     rows = []
     for k in sorted(keys):
         b = baseline.get(k)
@@ -116,13 +186,19 @@ def make_rows(keys, highlight_leak=False, highlight_error=False):
             change_val = float(f"{change:.3f}")
         else:
             change_val = None
+
+        # Determine highlighting based on metric metadata or category
+        metric_meta = all_metric_metadata.get(k, {})
+        highlight_leak = category_name == "memory" and ("leak" in k.lower() or "retained" in k.lower())
+        highlight_error = metric_meta.get("highlightError", False) or ("error" in k.lower())
+
         row = {
             "metric": k,
             "baseline": b_fmt,
             "heavy": h_fmt,
             "change": change_val,
-            "highlight_leak": highlight_leak and ("leak" in k.lower() or "retained" in k.lower()),
-            "highlight_error": highlight_error and ("error" in k.lower()),
+            "highlight_leak": highlight_leak,
+            "highlight_error": highlight_error,
         }
         row["severity"] = get_severity(row)
         rows.append(row)
@@ -138,31 +214,63 @@ def metric_found(metric, keys):
 collected_metrics = sorted(all_keys)
 missing_metrics = [m for m in EXPECTED_METRICS if not metric_found(m, all_keys)]
 
+# Build dynamic category structure
+categories = {}
+for category_name, metric_keys in categorized_metrics.items():
+    if metric_keys:  # Only include categories with metrics
+        categories[category_name] = make_rows(metric_keys, category_name)
+
+# Build category metadata for the report
+category_metadata = {}
+for category_name in categories.keys():
+    if category_name in all_category_metadata:
+        category_metadata[category_name] = all_category_metadata[category_name]
+    else:
+        # Provide default metadata for categories not in schema
+        category_metadata[category_name] = {
+            "displayName": category_name.replace("_", " ").title(),
+            "icon": "📊",
+            "description": f"{category_name.title()} metrics",
+            "order": 999  # Put at end
+        }
+
 report_data = {
     "schema_version": "1.0",
     "latest_type": latest_type,
     "latest_time": latest_time,
     "collected_metrics": collected_metrics,
     "missing_metrics": missing_metrics,
-    "cpu_os": make_rows(cpu_os_keys),
-    "memory": make_rows(memory_keys, highlight_leak=True),
-    "network": make_rows(network_keys, highlight_error=True),
-    "other": make_rows(other_keys) if other_keys else [],
 }
+
+# Add dynamic categories
+report_data.update(categories)
+
+# Add category metadata
+report_data["category_metadata"] = category_metadata
+
+# Backward compatibility: keep legacy structure
+# (cpu_os merged into cpu, other remains as other)
+report_data["cpu_os"] = categories.get("cpu", []) + categories.get("startup", [])
+report_data["memory"] = categories.get("memory", [])
+report_data["network"] = categories.get("network", [])
+report_data["other"] = categories.get("other", []) + categories.get("build", [])
 
 # Include custom metadata if present
 if custom_metrics_meta or custom_categories_meta:
-    report_data["metadata"] = {}
+    if "metadata" not in report_data:
+        report_data["metadata"] = {}
     if custom_metrics_meta:
         report_data["metadata"]["custom_metrics"] = custom_metrics_meta
     if custom_categories_meta:
         report_data["metadata"]["custom_categories"] = custom_categories_meta
 
-all_changes = [
-    row["change"]
-    for section in [report_data["cpu_os"], report_data["memory"], report_data["network"], report_data["other"]]
-    for row in section if row["change"] is not None
-]
+# Calculate overall performance from all categories
+all_changes = []
+for category_name, rows in categories.items():
+    for row in rows:
+        if row["change"] is not None:
+            all_changes.append(row["change"])
+
 if all_changes:
     avg_change = sum(all_changes) / len(all_changes)
     avg_change_fmt = float(f"{avg_change:.3f}")
@@ -186,3 +294,4 @@ else:
 
 report_json_path.write_text(json.dumps(report_data, indent=2))
 print(f"Report data generated: {report_json_path}")
+print(f"Categories included: {', '.join(sorted(categories.keys()))}")

@@ -1,5 +1,8 @@
 # Benchmark Workflow Guide
 
+**Updated:** December 4, 2025  
+**Version:** 2.0 (Phase 2+ with Persistent Storage)
+
 ## 📋 Table of Contents
 1. [How It Works](#how-it-works)
 2. [Running Benchmarks](#running-benchmarks)
@@ -15,52 +18,73 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Benchmark Workflow                      │
+│              Benchmark Workflow (Phase 2+)                   │
 └─────────────────────────────────────────────────────────────┘
 
 1. BUILD PHASE
    ├── Gradle builds baselineDebug APK
    ├── Gradle builds heavyDebug APK
+   ├── Both use same package: io.app.benchmark ✅
    └── Both APKs contain BenchmarkSDK
 
-2. TEST PHASE (./gradlew runBenchmarks)
-   ├── Install & run connectedBaselineDebugAndroidTest
+2. TEST PHASE (./gradlew runBenchmarkTests)
+   ├── Install app once (same package for all flavors) ✅
+   ├── Run connectedBaselineDebugAndroidTest
    │   ├── App launches with baseline configuration
-   │   ├── BenchmarkSDK collects metrics automatically
-   │   └── Metrics saved: /sdcard/.../benchmark-baseline.json
+   │   ├── BenchmarkSDK collects 42 metrics across 10 categories
+   │   └── Auto-persist: /sdcard/benchmark-results/benchmark-baseline.json ✅
    │
-   ├── Install & run connectedHeavyDebugAndroidTest
+   ├── App stays installed (no reinstall) ✅
+   ├── Run connectedHeavyDebugAndroidTest
    │   ├── App launches with heavy configuration
-   │   ├── BenchmarkSDK collects metrics automatically
-   │   └── Metrics saved: /sdcard/.../benchmark-heavy.json
+   │   ├── BenchmarkSDK collects metrics
+   │   └── Auto-persist: /sdcard/benchmark-results/benchmark-heavy.json ✅
    │
-   └── Tests complete
+   └── Tests complete - data in device cache (persists across reinstalls) ✅
 
-3. REPORT PHASE (auto-triggered)
-   ├── adb pull benchmark-baseline.json
-   ├── adb pull benchmark-heavy.json
-   ├── Python script: generate_report.py
-   │   ├── Compares baseline vs heavy
-   │   ├── Calculates change percentages
-   │   └── Determines severity levels
-   └── Output: benchmark-results/benchmarks/report.html
+3. REPORT PHASE - Phase 2 Dynamic Generation ✅
+   ├── Pull data: ./gradlew pullBenchmarkData
+   │   ├── adb pull /sdcard/benchmark-results/benchmark-baseline.json
+   │   └── adb pull /sdcard/benchmark-results/benchmark-heavy.json
+   │
+   ├── Generate: ./gradlew generateReport
+   │   ├── Python script: generate_report.py (DYNAMIC)
+   │   │   ├── Load metric-schema.json (categories, metadata)
+   │   │   ├── Merge custom metrics/categories from JSONs
+   │   │   ├── Categorize metrics using schema metadata
+   │   │   ├── Compare baseline vs heavy
+   │   │   ├── Calculate change percentages & severity
+   │   │   └── Generate dynamic category structure
+   │   └── Output: benchmark-results/report.html (DYNAMIC)
+   │       ├── Automatically detects all categories
+   │       ├── Renders with icons, display names, ordering
+   │       └── No hardcoded categories - fully extensible!
+   │
+   └── Auto-open browser ✅
 
 4. RESULT
-   └── Open report.html in browser to view comparison
+   └── Beautiful HTML report with all your custom categories
 ```
 
-### File Flow
+### File Flow (Phase 2+)
 
 ```
-Device Storage                     Local Machine
-─────────────────                 ─────────────────
-/sdcard/Android/data/             benchmark-results/
-io.app.benchmark/                 └── benchmarks/
-└── files/                            ├── benchmark-baseline.json
-    └── benchmarks/                   ├── benchmark-heavy.json
-        ├── benchmark-baseline.json ──┘ └── report.html
-        └── benchmark-heavy.json ────────┘
+Device Cache (Persistent)         Local Machine
+─────────────────────────        ─────────────────
+/sdcard/benchmark-results/        benchmark-results/
+├── benchmark-baseline.json ──┐   └── benchmarks/
+└── benchmark-heavy.json ─────┤       ├── benchmark-baseline.json
+                              │       ├── benchmark-heavy.json
+✅ Persists across reinstalls │       └── report.html
+                              └───────┘
 ```
+
+**Key Changes:**
+- ✅ Device cache: `/sdcard/benchmark-results/` (not app-specific)
+- ✅ Data survives app reinstalls
+- ✅ Same package prevents reinstalls between tests
+- ✅ Auto-persist in tests (@After method)
+- ✅ Browser auto-opens with report
 
 ---
 
@@ -68,11 +92,26 @@ io.app.benchmark/                 └── benchmarks/
 
 ### Method 1: Complete Suite (Recommended)
 
-Run everything with a single command:
+Run everything with clear, sequential commands:
 
 ```bash
-./gradlew runBenchmarks
+# Step 1: Run tests (auto-persists to device cache)
+./gradlew runBenchmarkTests
+
+# Step 2: Pull data from device cache
+./gradlew pullBenchmarkData
+
+# Step 3: Generate report and open browser
+./gradlew generateReport
 ```
+
+### Method 2: All-in-One
+
+```bash
+./gradlew benchmarkComplete
+```
+
+This runs all three steps automatically.
 
 **What happens:**
 1. Runs `connectedBaselineDebugAndroidTest` (installs baseline APK, runs tests)

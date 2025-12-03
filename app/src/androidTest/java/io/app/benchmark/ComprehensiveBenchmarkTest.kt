@@ -1,31 +1,124 @@
 package io.app.benchmark
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
+import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.app.benchmark.sdk.BenchmarkSDK
 import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import android.util.Log
+import androidx.test.rule.GrantPermissionRule
 
 /**
- * Comprehensive benchmark tests that collect rich performance data.
+ * Comprehensive benchmark tests demonstrating all schema categories.
  *
- * These tests run for both baseline and heavy flavors to generate
- * comparison data for the benchmark report.
+ * Tests cover: CPU, Memory, Network, Storage, Database, UI, Startup, and Custom metrics
+ * Runs for both baseline and heavy flavors to generate rich comparison data.
+ *
+ * Phase 2: Demonstrates dynamic report generation with custom categories
  */
 @RunWith(AndroidJUnit4::class)
 class ComprehensiveBenchmarkTest {
 
+    // Grant storage permissions for tests (Android 10 and below)
+    @get:Rule
+    val permissionRule: GrantPermissionRule = GrantPermissionRule.grant(
+        Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        Manifest.permission.READ_EXTERNAL_STORAGE
+    )
+
     private lateinit var context: Context
+    private lateinit var scenario: String
 
     @Before
     fun setup() {
         context = ApplicationProvider.getApplicationContext()
+        scenario = BuildConfig.BENCH_SCENARIO
+
+        // Debug: Log the scenario
+        Log.d("BenchmarkTest", "=== SCENARIO: $scenario ===")
+        println("=== BENCHMARK SCENARIO: $scenario ===")
 
         // Set scenario based on build flavor
-        BenchmarkSDK.setScenario(BuildConfig.BENCH_SCENARIO)
+        BenchmarkSDK.setScenario(scenario)
+        
+        // Define custom categories and metrics for comprehensive testing
+        defineCustomMetrics()
+    }
+    
+    /**
+     * Define custom categories and metrics to demonstrate Phase 2 dynamic reporting
+     */
+    private fun defineCustomMetrics() {
+        // Database category
+        BenchmarkSDK.defineCategory(
+            id = "database",
+            displayName = "Database Operations",
+            icon = "💾",
+            description = "Database query, insert, and transaction metrics",
+            order = 6
+        )
+        
+        BenchmarkSDK.defineMetric(
+            name = "databaseQueryMs",
+            category = "database",
+            displayName = "Query Time",
+            unit = "ms",
+            lowerIsBetter = true,
+            description = "Time to execute SELECT queries",
+            thresholds = io.app.benchmark.sdk.MetricThresholds(good = 50, warning = 150, critical = 300)
+        )
+        
+        BenchmarkSDK.defineMetric(
+            name = "databaseInsertMs",
+            category = "database",
+            displayName = "Insert Time",
+            unit = "ms",
+            lowerIsBetter = true
+        )
+        
+        // Custom startup metrics
+        BenchmarkSDK.defineMetric(
+            name = "startupColdBootMs",
+            category = "startup",
+            displayName = "Cold Boot Time",
+            unit = "ms",
+            lowerIsBetter = true
+        )
+        
+        // Custom UI metrics
+        BenchmarkSDK.defineMetric(
+            name = "uiFrameRenderMs",
+            category = "ui",
+            displayName = "Frame Render Time",
+            unit = "ms",
+            lowerIsBetter = true
+        )
+        
+        BenchmarkSDK.defineMetric(
+            name = "uiScrollFps",
+            category = "ui",
+            displayName = "Scroll FPS",
+            unit = "fps",
+            lowerIsBetter = false
+        )
+        
+        // Custom storage metrics
+        BenchmarkSDK.defineMetric(
+            name = "storageCacheHitRate",
+            category = "storage",
+            displayName = "Cache Hit Rate",
+            unit = "%",
+            lowerIsBetter = false
+        )
     }
 
     @Test
@@ -112,7 +205,7 @@ class ComprehensiveBenchmarkTest {
 
         // Test 3: Simulated slow network
         BenchmarkSDK.timeScenario("networkSlowSimulationMs") {
-            Thread.sleep(if (BuildConfig.BENCH_SCENARIO == "heavy") 3000 else 100)
+            Thread.sleep(if (scenario == "heavy") 3000 else 100)
         }
 
         // Record network health
@@ -156,6 +249,66 @@ class ComprehensiveBenchmarkTest {
             val prefs = context.getSharedPreferences("benchmark_test", Context.MODE_PRIVATE)
             prefs.getString("test_key", "default")
         }
+        
+        // Test 6: Cache simulation with hit rate
+        val cacheHits = simulateCacheAccess()
+        BenchmarkSDK.recordMetric("storageCacheHitRate", cacheHits)
+        
+        // Test 7: Large file I/O
+        BenchmarkSDK.timeScenario("storageLargeFileWriteMs") {
+            val largeFile = context.cacheDir.resolve("large_test.bin")
+            largeFile.writeBytes(ByteArray(1024 * 1024) { it.toByte() }) // 1MB
+        }
+    }
+    
+    @Test
+    fun test_04a_databaseOperations() {
+        // Simulated database operations (in-memory for testing)
+        
+        // Test 1: Query simulation
+        BenchmarkSDK.timeScenario("databaseQueryMs") {
+            // Simulate SELECT query with data filtering
+            val data = (1..1000).toList()
+            data.filter { it % 10 == 0 }
+            Thread.sleep(if (scenario == "heavy") 120 else 45)
+        }
+        
+        // Test 2: Insert simulation
+        BenchmarkSDK.timeScenario("databaseInsertMs") {
+            // Simulate INSERT operations
+            val records = mutableListOf<Pair<Int, String>>()
+            repeat(100) { i ->
+                records.add(i to "record_$i")
+            }
+            Thread.sleep(if (scenario == "heavy") 80 else 30)
+        }
+        
+        // Test 3: Transaction simulation
+        BenchmarkSDK.timeScenario("databaseTransactionMs") {
+            // Simulate multi-operation transaction
+            Thread.sleep(if (scenario == "heavy") 200 else 75)
+            listOf("BEGIN", "INSERT", "UPDATE", "COMMIT")
+        }
+        
+        // Test 4: Complex join simulation
+        BenchmarkSDK.timeScenario("databaseJoinMs") {
+            val table1 = (1..500).map { it to "value_$it" }
+            val table2 = (1..500).map { it to "data_$it" }
+            table1.filter { (id, _) -> table2.any { (id2, _) -> id == id2 } }
+            Thread.sleep(if (scenario == "heavy") 150 else 60)
+        }
+        
+        // Test 5: Index lookup simulation
+        BenchmarkSDK.timeScenario("databaseIndexLookupMs") {
+            val indexed = (1..10_000).associate { it to "value_$it" }
+            repeat(100) {
+                indexed[kotlin.random.Random.nextInt(1, 10_000)]
+            }
+        }
+        
+        // Record database health metrics
+        BenchmarkSDK.recordMetric("databaseConnectionPoolSize", 10)
+        BenchmarkSDK.recordMetric("databaseActiveConnections", if (scenario == "heavy") 8 else 3)
     }
 
     @Test
@@ -221,7 +374,7 @@ class ComprehensiveBenchmarkTest {
             pixels.fill(0xFF0000FF.toInt())
         }
 
-        // Test 2: Layout inflation simulation (string building as proxy)
+        // Test 2: Layout inflation simulation
         BenchmarkSDK.timeScenario("uiLayoutSimMs") {
             repeat(100) {
                 StringBuilder().apply {
@@ -236,16 +389,86 @@ class ComprehensiveBenchmarkTest {
         BenchmarkSDK.timeScenario("uiAnimationSimMs") {
             repeat(60) { frame ->
                 val progress = frame / 60f
-                val value = android.view.animation.AccelerateDecelerateInterpolator()
+                android.view.animation.AccelerateDecelerateInterpolator()
                     .getInterpolation(progress)
             }
         }
+        
+        // Test 4: Frame rendering simulation (custom metric)
+        BenchmarkSDK.timeScenario("uiFrameRenderMs") {
+            // Simulate 60fps frame (16.67ms target)
+            repeat(60) {
+                Thread.sleep(if (scenario == "heavy") 18 else 12)
+            }
+        }
+        
+        // Test 5: Scroll performance simulation
+        val scrollFps = simulateScrollPerformance()
+        BenchmarkSDK.recordMetric("uiScrollFps", scrollFps)
+        
+        // Test 6: View hierarchy complexity
+        BenchmarkSDK.timeScenario("uiViewHierarchyMs") {
+            // Simulate deep view hierarchy traversal
+            repeat(if (scenario == "heavy") 100 else 50) {
+                // Traverse depth
+            }
+        }
+        
+        // Test 7: Touch event processing
+        BenchmarkSDK.timeScenario("uiTouchEventMs") {
+            repeat(100) {
+                // Simulate touch event handling
+                kotlin.random.Random.nextFloat() * 1080
+                kotlin.random.Random.nextFloat() * 1920
+            }
+        }
+        
+        // Record UI health metrics
+        BenchmarkSDK.recordMetric("uiDroppedFrames", if (scenario == "heavy") 15 else 2)
+        BenchmarkSDK.recordMetric("uiJankCount", if (scenario == "heavy") 8 else 1)
+    }
+    
+    @Test
+    fun test_07a_startupOperations() {
+        // Simulate startup-related operations
+        
+        // Test 1: Cold boot simulation
+        BenchmarkSDK.timeScenario("startupColdBootMs") {
+            // Simulate app initialization
+            Thread.sleep(if (scenario == "heavy") 850 else 320)
+        }
+        
+        // Test 2: Library initialization
+        BenchmarkSDK.timeScenario("startupInitLibrariesMs") {
+            // Simulate SDK/library initialization
+            repeat(if (scenario == "heavy") 10 else 5) {
+                Thread.sleep(if (scenario == "heavy") 50 else 20)
+            }
+        }
+        
+        // Test 3: Splash screen duration
+        BenchmarkSDK.timeScenario("startupSplashMs") {
+            Thread.sleep(if (scenario == "heavy") 500 else 200)
+        }
+        
+        // Test 4: First paint time
+        BenchmarkSDK.timeScenario("startupFirstPaintMs") {
+            Thread.sleep(if (scenario == "heavy") 650 else 280)
+        }
+        
+        // Test 5: Time to interactive
+        BenchmarkSDK.timeScenario("startupTimeToInteractiveMs") {
+            Thread.sleep(if (scenario == "heavy") 1200 else 450)
+        }
+        
+        // Record startup metrics
+        BenchmarkSDK.recordMetric("startupBackgroundTasks", if (scenario == "heavy") 12 else 5)
     }
 
     @Test
     fun test_08_customScenarioMetrics() {
         // Scenario-specific behavior
-        when (BuildConfig.BENCH_SCENARIO) {
+        when (scenario) {
             "baseline" -> {
                 // Light operations for baseline
                 BenchmarkSDK.timeScenario("scenarioLightworkMs") {
@@ -274,9 +497,76 @@ class ComprehensiveBenchmarkTest {
         val runtimeMetrics = BenchmarkSDK.getActualRuntimeMetrics()
         println("Runtime metrics: $runtimeMetrics")
 
-        // Persist all collected metrics
-        val file = BenchmarkSDK.collectScenarioAndPersist(context)
-        println("✅ Metrics saved to: ${file.absolutePath}")
+        try {
+            // Check permissions first
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+                val hasWritePermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.WRITE_EXTERNAL_STORAGE
+                ) == PackageManager.PERMISSION_GRANTED
+
+                Log.d("BenchmarkTest", "WRITE_EXTERNAL_STORAGE permission: $hasWritePermission")
+
+                if (!hasWritePermission) {
+                    Log.w("BenchmarkTest", "⚠️ Missing WRITE_EXTERNAL_STORAGE permission")
+                }
+            }
+
+            // Persist all collected metrics
+            Log.d("BenchmarkTest", "Attempting to persist metrics for scenario: $scenario")
+            val file = BenchmarkSDK.collectScenarioAndPersist(context)
+
+            val dirPath = file.parentFile?.absolutePath ?: "unknown"
+            val fileExists = file.exists()
+            val fileSize = if (fileExists) file.length() else 0
+
+            val message = """
+                Scenario: $scenario
+                Dir: $dirPath
+                File: ${file.name}
+                Exists: $fileExists
+                Size: $fileSize bytes
+            """.trimIndent()
+
+            Log.d("BenchmarkTest", "✅ $message")
+            println("✅ Metrics saved to: ${file.absolutePath}")
+
+            // Show Toast on UI thread
+            context.mainLooper?.let { looper ->
+                android.os.Handler(looper).post {
+                    Toast.makeText(
+                        context,
+                        message,
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+
+            // Wait a bit for Toast to show
+            Thread.sleep(1000)
+
+            // Verify file was actually written
+            if (!file.exists()) {
+                val errorMsg = """
+                    ❌ File does not exist after write
+                    Path: ${file.absolutePath}
+                    Parent exists: ${file.parentFile?.exists()}
+                    Parent path: ${file.parentFile?.absolutePath}
+                    Can write: ${file.parentFile?.canWrite()}
+                    
+                    Check logcat for BenchmarkSDK errors
+                """.trimIndent()
+
+                Log.e("BenchmarkTest", errorMsg)
+                throw IllegalStateException("Benchmark file was not created: ${file.absolutePath}")
+            }
+
+        } catch (e: Exception) {
+            Log.e("BenchmarkTest", "❌ Error persisting metrics", e)
+            println("❌ Error: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
     }
 
     // Helper functions
@@ -286,5 +576,47 @@ class ComprehensiveBenchmarkTest {
             else -> fibonacci(n - 1) + fibonacci(n - 2)
         }
     }
+    
+    /**
+     * Simulate cache access with hit/miss ratio
+     * @return cache hit rate percentage
+     */
+    private fun simulateCacheAccess(): Double {
+        val totalAccesses = 100
+        val cache = mutableMapOf<Int, String>()
+        
+        // Pre-populate cache
+        repeat(50) { i ->
+            cache[i] = "cached_$i"
+        }
+        
+        var hits = 0
+        repeat(totalAccesses) {
+            val key = kotlin.random.Random.nextInt(0, 75)
+            if (cache.containsKey(key)) {
+                hits++
+            }
+        }
+        
+        return (hits.toDouble() / totalAccesses) * 100
+    }
+    
+    /**
+     * Simulate scroll performance and calculate FPS
+     * @return average frames per second
+     */
+    private fun simulateScrollPerformance(): Double {
+        var actualFrameTime = 0.0
+        
+        repeat(60) {
+            val start = System.nanoTime()
+            // Simulate frame work
+            Thread.sleep(if (scenario == "heavy") 18 else 12)
+            val end = System.nanoTime()
+            actualFrameTime += (end - start) / 1_000_000.0 // Convert to ms
+        }
+        
+        val avgFrameTime = actualFrameTime / 60
+        return 1000.0 / avgFrameTime // Convert to FPS
+    }
 }
-

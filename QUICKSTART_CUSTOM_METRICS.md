@@ -1,6 +1,11 @@
 # Quick Start: Adding Custom Metrics
 
-This guide shows you how to add custom performance metrics to your app using the BenchmarkSDK's Phase 1 features.
+This guide shows you how to add custom performance metrics to your app using the BenchmarkSDK's Phase 1 & 2 features.
+
+**New in Phase 2:**
+- ✅ Reports automatically render your custom categories (no code changes needed)
+- ✅ Persistent device cache storage (data survives app reinstalls)
+- ✅ Auto-open browser with beautiful HTML reports
 
 ## 5-Minute Integration
 
@@ -19,6 +24,8 @@ BenchmarkSDK.defineCategory(
     order = 6                                  // Display order (lower = first)
 )
 ```
+
+**Phase 2 Benefit:** This category will automatically appear in the HTML report with your icon and display name!
 
 ### Step 2: Define Your Metric
 
@@ -257,11 +264,60 @@ When you collect metrics, your custom data is included:
 - ✓ Use `defineCategory()` before `defineMetric()` that uses it
 - ✓ Category `id` in `defineMetric()` must match `id` in `defineCategory()`
 
+---
+
+## Phase 2: Automatic Report Generation
+
+**Good news!** Your custom metrics automatically appear in the HTML report with no additional work:
+
+### What Happens Automatically
+
+1. **Tests Run** - Your metrics are collected during instrumented tests
+2. **Auto-Persist** - Data saved to device cache (`/sdcard/benchmark-results/`)
+3. **Dynamic Report** - Your custom category appears with icon and metrics
+4. **Auto-Open** - Browser opens with beautiful HTML report
+
+### Running Benchmarks
+
+```bash
+# Run tests (auto-persists to device cache)
+./gradlew runBenchmarkTests
+
+# Pull data and generate report
+./gradlew pullBenchmarkData
+./gradlew generateReport
+
+# Or all-in-one
+./gradlew benchmarkComplete
+```
+
+### What Your Custom Category Looks Like
+
+In the HTML report, your database category automatically appears as:
+
+```
+💾 Database & Storage
+  ├─ databaseQueryMs: 45ms → 120ms (+166.7%) ⚠️ Needs Attention
+  ├─ cacheHitRate: 85% → 88% (+3.5%) ✅ Good
+  └─ ...
+```
+
+**Features:**
+- ✅ Icon from your category definition
+- ✅ Display name instead of ID
+- ✅ Color-coded severity (based on thresholds)
+- ✅ Automatic change calculations
+- ✅ Sorted by your `order` value
+
+---
+
 ## Next Steps
 
-- See [SCHEMA_GUIDE.md](../benchmark-sdk/SCHEMA_GUIDE.md) for complete reference
-- See [API_DOCUMENTATION.md](../API_DOCUMENTATION.md) for all SDK methods
-- See [MainActivity.kt](../app/src/main/java/io/app/benchmark/MainActivity.kt) for working example
+- See [PHASE2_SUMMARY.md](PHASE2_SUMMARY.md) - How dynamic reports work
+- See [SCHEMA_GUIDE.md](benchmark-sdk/SCHEMA_GUIDE.md) for complete reference
+- See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for all SDK methods
+- See [BENCHMARK_WORKFLOW.md](BENCHMARK_WORKFLOW.md) for complete workflow
+- See [MainActivity.kt](app/src/main/java/io/app/benchmark/MainActivity.kt) for working example
 
 ## Need Help?
 

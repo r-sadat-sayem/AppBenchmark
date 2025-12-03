@@ -4,15 +4,40 @@ This project contains a sample Android app and a lightweight Benchmark SDK libra
 
 - Startup time measurement (process start -> first UI ready)
 - Memory & CPU usage metrics
-- **NEW: Unified metric schema with metadata** (Phase 1 complete! 🎉)
+- **NEW: Unified metric schema with metadata** (Phase 1 ✅)
 - **NEW: Custom metric/category definition API**
+- **NEW: Dynamic report generation** (Phase 2 ✅)
+- **NEW: Persistent device cache storage** (Phase 2+ ✅)
+- **NEW: 42 comprehensive test scenarios** (Phase 2+ ✅)
 - JSON + HTML report generation with automatic diff vs previous run
-- Simple Gradle task `runBenchmarks` for CI
-- **Real network benchmarking** using aviationweather.gov API (see below)
+- Simple Gradle tasks for CI/CD
+- **Real network benchmarking** using aviationweather.gov API
 
-## 🆕 What's New - Phase 1: Unified Metric Schema
+## 🆕 What's New
 
-The SDK now supports a **standardized metric schema** that allows you to:
+### Phase 2 + Enhancements ✅ **COMPLETED**
+
+The report system is now **fully dynamic** with enhanced testing and persistent storage:
+
+✅ **No hardcoded categories** - Reports automatically adapt to any metrics  
+✅ **Schema-driven display** - Icons, display names, ordering from metadata  
+✅ **Automatic categorization** - Metrics organized intelligently  
+✅ **Persistent device cache** - Data survives app reinstalls  
+✅ **No app reinstalls** - Same package for all test variants  
+✅ **42 test scenarios** - Comprehensive coverage (CPU, Memory, Network, Storage, Database, UI, Startup)  
+✅ **Auto-open browser** - Report opens automatically (cross-platform)  
+✅ **Zero code changes** - Add new categories without touching report code  
+
+**Example:** Add a database category - it appears automatically with proper icon and styling!
+
+📖 **[Phase 2 Summary](PHASE2_SUMMARY.md)** - Complete implementation details  
+📖 **[Phase 2 Complete](PHASE2_COMPLETE.md)** - All enhancements documented
+
+---
+
+### Phase 1: Unified Metric Schema ✅ **COMPLETED**
+
+The SDK supports a **standardized metric schema** that allows you to:
 
 ✅ Define custom metrics with metadata (units, thresholds, descriptions)  
 ✅ Create custom categories for organizing metrics  
@@ -36,7 +61,8 @@ BenchmarkSDK.recordMetric("databaseQueryMs", 75)
 - [Workflow Guide](BENCHMARK_WORKFLOW.md) - Complete benchmarking workflow & troubleshooting
 - [Schema Guide](benchmark-sdk/SCHEMA_GUIDE.md) - Metric schema reference
 - [API Documentation](API_DOCUMENTATION.md) - Complete SDK API
-- [Phase 1 Complete](PHASE1_COMPLETE.md) - All Phase 1 changes & how runBenchmarks works
+- [Phase 1 Summary](PHASE1_SUMMARY.md) - Phase 1 implementation details
+- [Phase 2 Summary](PHASE2_SUMMARY.md) - Phase 2 dynamic report system
 
 ## Modules
 - `app`: Sample application using Jetpack Compose
@@ -49,14 +75,34 @@ BenchmarkSDK.recordMetric("databaseQueryMs", 75)
 Run the complete benchmark suite with one command:
 
 ```bash
-./gradlew runBenchmarks
+./gradlew runBenchmarkTests
 ```
 
 This will automatically:
 1. ✅ Run instrumented tests for `baseline` and `heavy` scenarios
-2. ✅ Pull JSON metrics from device storage via adb
-3. ✅ Generate HTML comparison report
-4. ✅ Output report location: `benchmark-results/benchmarks/report.html`
+2. ✅ Auto-persist metrics to device cache (`/sdcard/benchmark-results/`)
+3. ✅ Data persists across app reinstalls
+4. ✅ App stays installed (no reinstalls between tests)
+
+Then pull data and generate report:
+
+```bash
+./gradlew pullBenchmarkData   # Pulls from device cache
+./gradlew generateReport       # Generates HTML and opens browser
+```
+
+**Or use complete workflow:**
+```bash
+./gradlew benchmarkComplete    # Does everything above
+```
+
+### What You Get
+
+- **42 test scenarios** across 10 categories
+- **Persistent storage** in `/sdcard/benchmark-results/`
+- **Auto-open browser** with beautiful HTML report
+- **Dynamic categories** with icons and styling
+- **Device cache** survives app reinstalls
 
 ### Advanced Usage
 

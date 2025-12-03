@@ -116,9 +116,53 @@ val result = BenchmarkSDK.realNetworkRequest(
 ```
 
 ## Integration Steps
-1. Add the SDK as a dependency.
-2. Call `onAppReady()` at app startup.
-3. Use `setScenario()` to label runs.
+
+### 1. Add SDK Dependency
+```kotlin
+dependencies {
+    implementation(project(":benchmark-sdk"))
+}
+```
+
+### 2. Call onAppReady() at Startup
+```kotlin
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        BenchmarkSDK.onAppReady()
+    }
+}
+```
+
+### 3. Define Custom Metrics (Optional)
+```kotlin
+BenchmarkSDK.defineCategory(
+    id = "database",
+    displayName = "Database Operations",
+    icon = "💾"
+)
+
+BenchmarkSDK.defineMetric(
+    name = "databaseQueryMs",
+    category = "database",
+    displayName = "Query Time",
+    unit = "ms"
+)
+```
+
+### 4. Record Metrics
+```kotlin
+BenchmarkSDK.recordMetric("databaseQueryMs", 75)
+```
+
+### 5. Run Tests and Generate Report
+```bash
+./gradlew runBenchmarkTests      # Runs tests, auto-persists
+./gradlew pullBenchmarkData      # Pulls from device cache
+./gradlew generateReport         # Generates HTML, opens browser
+```
+
+**Phase 2 Benefit:** Your custom category automatically appears in the HTML report with icon and styling!
 4. Use `collectAndPersist()` or `collectScenarioAndPersist()` to save metrics.
 5. Use `getActualRuntimeMetrics()` for direct access to metrics.
 6. Use `realNetworkRequest()` for network benchmarking.
@@ -148,3 +192,103 @@ The Benchmark SDK collects and reports the following metrics:
 
 > **Note:** Metrics prefixed with `network_*` are collected for each network scenario (e.g., `network_aviation`, `network_google`).
 
+---
+
+## Report Structure (Phase 2 - Dynamic)
+
+The generated `report.json` now uses a **dynamic, schema-driven structure**:
+
+```json
+{
+  "schema_version": "1.0",
+  "latest_type": "heavy",
+  "latest_time": "2025-12-04 10:30:00",
+  
+  "collected_metrics": ["cpuHeavyLoopMs", "memoryUsedBytes", ...],
+  "missing_metrics": ["startupTimeMs", ...],
+  
+  // Dynamic categories (automatically detected and organized)
+  "cpu": [
+    {
+      "metric": "cpuHeavyLoopMs",
+      "baseline": 1,
+      "heavy": 5,
+      "change": 400.0,
+      "highlight_leak": false,
+      "highlight_error": false,
+      "severity": "Needs Attention"
+    },
+    {
+      "metric": "processCpuTimeMs",
+      "baseline": 119,
+      "heavy": 148,
+      "change": 24.37,
+      "severity": "Warning"
+    }
+  ],
+  
+  "memory": [...],
+  "network": [...],
+  "build": [...],
+  "database": [...],  // Custom categories automatically included!
+  
+  // Category metadata for display (icons, names, ordering)
+  "category_metadata": {
+    "cpu": {
+      "displayName": "CPU & Performance",
+      "icon": "⚡",
+      "description": "CPU usage and performance metrics",
+      "order": 1
+    },
+    "memory": {
+      "displayName": "Memory & Heap",
+      "icon": "🧠",
+      "description": "Memory allocation and usage",
+      "order": 2
+    },
+    "database": {
+      "displayName": "Database Operations",
+      "icon": "💾",
+      "description": "Custom database metrics",
+      "order": 6
+    }
+  },
+  
+  // Overall performance summary
+  "overall_performance": {
+    "average_change": 145.67,
+    "status": "Degraded",
+    "summary": "Overall performance change: 145.67% (Degraded)"
+  },
+  
+  // Custom metadata (if provided)
+  "metadata": {
+    "custom_metrics": {...},
+    "custom_categories": {...}
+  }
+}
+```
+
+### Key Features (Phase 2)
+
+✅ **No Hardcoded Categories** - Any category in the data will be rendered  
+✅ **Automatic Categorization** - Metrics organized by schema metadata  
+✅ **Display Metadata** - Icons, display names, ordering from schema  
+✅ **Custom Categories** - Automatically detected and displayed  
+✅ **Backward Compatible** - Legacy fields (`cpu_os`, `memory`, `network`, `other`) still present
+
+### HTML Report Features
+
+The `report.html` automatically:
+- Detects all categories from JSON
+- Sorts by `order` field from metadata
+- Renders tables with icons and proper titles
+- Applies category-specific highlighting (e.g., errors in network, leaks in memory)
+- Shows severity badges (Needs Attention, Warning, Minor, Normal)
+- Formats large numbers with commas
+- Handles objects, booleans, and null values gracefully
+- Responsive design for mobile devices
+
+**No code changes needed to add new categories!**
+
+---

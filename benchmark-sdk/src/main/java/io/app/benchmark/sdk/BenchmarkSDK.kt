@@ -113,6 +113,8 @@ object BenchmarkSDK {
     /** Collect metrics and persist JSON report. Returns the metrics map. */
     fun collectAndPersist(context: Context): Map<String, Any> {
         val metrics = LinkedHashMap<String, Any>()
+
+        // Collect all metrics
         startupDurationMs?.let { metrics["startupTimeMs"] = it }
         collectRuntimeMetrics(metrics)
         collectCustom(metrics)
@@ -130,24 +132,55 @@ object BenchmarkSDK {
         )
         metrics["buildConfig"] = buildConfig
 
-        val outDir = context.getExternalFilesDir("benchmarks") ?: context.filesDir
-        if (!outDir.exists()) outDir.mkdirs()
+        // Use device cache directory (persists across app reinstalls)
+        // Path: /sdcard/benchmark-results/
+        val outDir = File(android.os.Environment.getExternalStorageDirectory(), "benchmark-results")
 
-        val jsonFile = File(outDir, "benchmark-latest.json")
+        // Ensure directory exists
+        if (!outDir.exists()) {
+            val created = outDir.mkdirs()
+            Log.i(TAG, "Creating benchmark directory: ${outDir.absolutePath} - success: $created")
+
+            if (!created) {
+                Log.e(TAG, "❌ Failed to create directory: ${outDir.absolutePath}")
+                // Fallback to app-specific directory if device cache fails
+                val fallbackDir = context.getExternalFilesDir("benchmarks") ?: context.filesDir
+                fallbackDir.mkdirs()
+                Log.w(TAG, "Using fallback directory: ${fallbackDir.absolutePath}")
+                return writeMetricsToFile(fallbackDir, metrics)
+            }
+        }
+
+        return writeMetricsToFile(outDir, metrics)
+    }
+
+    /** Write metrics to file in specified directory. */
+    private fun writeMetricsToFile(outDir: File, metrics: Map<String, Any>): Map<String, Any> {
+        // Use scenario label if set, otherwise use "latest"
+        val label = scenarioLabel ?: "latest"
+        val jsonFile = File(outDir, "benchmark-$label.json")
+
+        // Write with metadata
         BenchmarkJsonWriter.write(jsonFile, metrics)
 
-        Log.i(TAG, "Benchmark results written to ${jsonFile.absolutePath}")
+        Log.i(TAG, "✅ Benchmark results written to ${jsonFile.absolutePath} (scenario: $label)")
+        Log.i(TAG, "   File exists: ${jsonFile.exists()}, Size: ${jsonFile.length()} bytes")
+        Log.i(TAG, "   Directory: ${outDir.absolutePath}")
+
         return metrics
     }
 
     /** Collect metrics and persist JSON report with scenario in filename. */
     fun collectScenarioAndPersist(context: Context): File {
-        val metrics = collectAndPersist(context)
-        val label = scenarioLabel ?: "scenario"
-        val outDir = context.getExternalFilesDir("benchmarks") ?: context.filesDir
-        val taggedFile = File(outDir, "benchmark-${label}.json")
-        BenchmarkJsonWriter.write(taggedFile, metrics)
-        return taggedFile
+        collectAndPersist(context)
+
+        val label = scenarioLabel ?: "latest"
+        // Use device cache directory (same as collectAndPersist)
+        val outDir = File(android.os.Environment.getExternalStorageDirectory(), "benchmark-results")
+        val file = File(outDir, "benchmark-$label.json")
+
+        Log.i(TAG, "Benchmark file: ${file.absolutePath} (exists: ${file.exists()}, size: ${file.length()})")
+        return file
     }
 
     /** Get actual runtime metrics from the app process and OS. */
