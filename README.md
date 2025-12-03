@@ -118,9 +118,9 @@ The Benchmark SDK collects and reports the following metrics:
 | simulatedRequestMs           | Simulated network request time (ms)              |
 | scenarioLabel                | Scenario label (baseline, heavy, custom)         |
 | apkSizeBytes (static)        | APK file size (bytes)                            |
-| buildConfig (static)         | Build configuration values                       |
+| buildConfig (static)         | Build configuration values (version, id, etc.)   |
 
-> **Note:** Metrics prefixed with `network_*` are collected for each network scenario (e.g., `network_aviation`, `network_google`).
+> **Note:** All metrics above are now collected and reported automatically by the SDK, including `startupTimeMs`, `apkSizeBytes`, and `buildConfig`.
 
 ## BenchmarkSDK API Documentation
 
@@ -202,4 +202,6 @@ val result = BenchmarkSDK.realNetworkRequest(
 5. Use `getActualRuntimeMetrics()` for direct access to metrics.
 6. Use `realNetworkRequest()` for network benchmarking.
 
----
+## TODO: AI/LLM Integration for Report Analysis
+- Integrate an LLM (Large Language Model) to analyze benchmark metrics and generate deeper insights, recommendations, and summaries.
+- Prospects: Automated performance diagnosis, anomaly detection, and actionable suggestions for developers. Can be integrated via API (OpenAI, Azure, Google Vertex AI, etc.) and used in CI or reporting scripts.

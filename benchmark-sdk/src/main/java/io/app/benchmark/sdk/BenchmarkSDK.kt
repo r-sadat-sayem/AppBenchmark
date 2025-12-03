@@ -56,6 +56,19 @@ object BenchmarkSDK {
         collectRuntimeMetrics(metrics)
         collectCustom(metrics)
 
+        // Add APK size (static metric)
+        val apkPath = context.applicationInfo.sourceDir
+        val apkFile = File(apkPath)
+        metrics["apkSizeBytes"] = apkFile.length()
+
+        // Add build config (static metric)
+        val buildConfig = mapOf(
+            "versionName" to try { context.packageManager.getPackageInfo(context.packageName, 0).versionName } catch (_: Exception) { null },
+            "versionCode" to try { context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode } catch (_: Exception) { null },
+            "applicationId" to context.packageName
+        )
+        metrics["buildConfig"] = buildConfig
+
         val outDir = context.getExternalFilesDir("benchmarks") ?: context.filesDir
         if (!outDir.exists()) outDir.mkdirs()
 

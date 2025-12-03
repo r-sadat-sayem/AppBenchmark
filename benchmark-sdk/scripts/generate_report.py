@@ -3,24 +3,47 @@ from pathlib import Path
 import time
 
 root_dir = Path("benchmark-results/")
-results_dir = Path(root_dir / "benchmarks")
+results_dir = root_dir / "benchmarks"
 results_dir.mkdir(parents=True, exist_ok=True)
 
 baseline_file = results_dir / "benchmark-baseline.json"
 heavy_file = results_dir / "benchmark-heavy.json"
 report_json_path = root_dir / "report.json"
 
-if not baseline_file.exists() or not heavy_file.exists():
-    report_json_path.write_text(json.dumps({"error": "Missing scenario files; need both benchmark-baseline.json and benchmark-heavy.json to compare."}))
-    print(f"Missing scenario files; generated placeholder report: {report_json_path}")
-    raise SystemExit(0)
+EXPECTED_METRICS = [
+    "startupTimeMs",
+    "memoryPssKb",
+    "memoryUsedBytes",
+    "memoryHeapMaxBytes",
+    "memoryUsagePercent",
+    "processCpuTimeMs",
+    "measuredNetworkLatencyMs",
+    "cpuHeavyLoopMs",
+    "memoryAllocationMs",
+    "simulatedRequestMs",
+    "scenarioLabel",
+    "apkSizeBytes",
+    "buildConfig",
+    # Network metrics are dynamic, so we check for their prefixes
+    "network_*_requestMs",
+    "network_*_responseCode",
+    "network_*_responseLength",
+    "network_*_error",
+]
 
 def load_metrics(file: Path):
     try:
         data = json.loads(file.read_text())
-        return data.get("metrics", data)  # support plain metrics root
+        return data.get("metrics", data)
     except Exception:
         return {}
+
+if not baseline_file.exists() or not heavy_file.exists():
+    report_json_path.write_text(json.dumps({
+        "error": "Missing scenario files; need both benchmark-baseline.json and benchmark-heavy.json to compare."
+    }))
+    print(f"Missing scenario files; generated placeholder report: {report_json_path}")
+    raise SystemExit(0)
 
 baseline = load_metrics(baseline_file)
 heavy = load_metrics(heavy_file)
@@ -29,10 +52,12 @@ latest_file = max([baseline_file, heavy_file], key=lambda f: f.stat().st_mtime)
 latest_type = "baseline" if latest_file == baseline_file else "heavy"
 latest_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(latest_file.stat().st_mtime))
 
-cpu_os_keys = [k for k in baseline.keys() | heavy.keys() if k.startswith("cpu") or k.startswith("process") or k.startswith("startup") or k.startswith("os")]
-memory_keys = [k for k in baseline.keys() | heavy.keys() if k.startswith("memory") or "leak" in k.lower()]
-network_keys = [k for k in baseline.keys() | heavy.keys() if k.startswith("network") or k.endswith("requestMs") or k.endswith("responseCode") or k.endswith("responseLength") or k.endswith("error")]
-other_keys = [k for k in baseline.keys() | heavy.keys() if k not in cpu_os_keys + memory_keys + network_keys]
+all_keys = set(baseline.keys()) | set(heavy.keys())
+
+cpu_os_keys = [k for k in all_keys if k.startswith(("cpu", "process", "startup", "os"))]
+memory_keys = [k for k in all_keys if k.startswith("memory") or "leak" in k.lower()]
+network_keys = [k for k in all_keys if k.startswith("network") or k.endswith(("requestMs", "responseCode", "responseLength", "error"))]
+other_keys = [k for k in all_keys if k not in cpu_os_keys + memory_keys + network_keys]
 
 def get_severity(row):
     if row["highlight_leak"] or row["highlight_error"]:
@@ -78,20 +103,32 @@ def make_rows(keys, highlight_leak=False, highlight_error=False):
         rows.append(row)
     return rows
 
+def metric_found(metric, keys):
+    if "*" in metric:
+        prefix = metric.split("*")[0]
+        suffix = metric.split("*")[-1]
+        return any(k.startswith(prefix) and k.endswith(suffix) for k in keys)
+    return metric in keys
+
+collected_metrics = sorted(all_keys)
+missing_metrics = [m for m in EXPECTED_METRICS if not metric_found(m, all_keys)]
+
 report_data = {
     "latest_type": latest_type,
     "latest_time": latest_time,
+    "collected_metrics": collected_metrics,
+    "missing_metrics": missing_metrics,
     "cpu_os": make_rows(cpu_os_keys),
     "memory": make_rows(memory_keys, highlight_leak=True),
     "network": make_rows(network_keys, highlight_error=True),
     "other": make_rows(other_keys) if other_keys else [],
 }
 
-all_changes = []
-for section in [report_data["cpu_os"], report_data["memory"], report_data["network"], report_data["other"]]:
-    for row in section:
-        if row["change"] is not None:
-            all_changes.append(row["change"])
+all_changes = [
+    row["change"]
+    for section in [report_data["cpu_os"], report_data["memory"], report_data["network"], report_data["other"]]
+    for row in section if row["change"] is not None
+]
 if all_changes:
     avg_change = sum(all_changes) / len(all_changes)
     avg_change_fmt = float(f"{avg_change:.3f}")

@@ -32,11 +32,25 @@ android {
     flavorDimensions += "bench"
 
     buildTypes {
-        release {
+        getByName("release") {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
+            )
+        }
+        getByName("debug") {
+            isJniDebuggable = true
+        }
+        create("benchmark") {
+            initWith(getByName("release"))
+            isJniDebuggable = false
+            // Benchmark-specific config
+            matchingFallbacks += listOf("release")
+            signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-benchmark-rules.pro"
             )
         }
     }
@@ -61,7 +75,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    testImplementation(libs.junit)
+    testImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -69,4 +83,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation(project(":benchmark-sdk"))
+//    androidTestImplementation(libs.androidx.benchmark.common)
+//    androidTestImplementation(libs.androidx.benchmark.junit4)
+//    androidTestImplementation(libs.androidx.benchmark.macro)
 }

@@ -1,0 +1,10 @@
+{
+  "startup_measurement": {
+    "iterations": 5,
+    "scenario": "launcher", // Options: launcher, notification
+    "warn_resource_usage": true
+  }
+  // You can extend this config for other scenarios or metrics
+  // "memory_measurement": { "iterations": 5, "scenario": "heavy" }
+}
+
