@@ -1,5 +1,7 @@
 package io.app.benchmark
 
+import android.content.Context
+import android.os.SystemClock
 import io.app.benchmark.sdk.BenchmarkSDK
 
 /** Provides deterministic baseline vs heavy scenario metrics to show report differences. */
@@ -11,12 +13,87 @@ object ScenarioMetrics {
     }
     private var retained: List<ByteArray>? = null
 
-    /** Runs all scenario benchmarks: CPU, memory, and network. */
+    /** Runs all scenario benchmarks: CPU, memory, network, and startup. */
     fun runScenarios() {
         cpuLoop() // Measures CPU-intensive loop
         allocateMemory() // Measures memory allocation
         realNetwork() // Measures real network latency
-        // macroBenchmarkStartup() // Placeholder for macrobenchmark integration
+    }
+
+    /** Simulates cold start scenario - app launch from scratch. */
+    fun simulateColdStart(context: Context): Long {
+        val startTime = SystemClock.elapsedRealtime()
+
+        // Simulate cold start work
+        val workDuration = if (scenario == Scenario.BASELINE) 150L else 450L
+
+        // Simulate initialization work
+        Thread.sleep(workDuration)
+
+        val elapsed = SystemClock.elapsedRealtime() - startTime
+        BenchmarkSDK.recordMetric("startupColdMs", elapsed)
+        BenchmarkSDK.recordMetric("startupType", "cold")
+
+        android.util.Log.d("ScenarioMetrics", "Cold start simulated: ${elapsed}ms")
+
+        return elapsed
+    }
+
+    /** Simulates hot start scenario - app resumed from background. */
+    fun simulateHotStart(context: Context): Long {
+        val startTime = SystemClock.elapsedRealtime()
+
+        // Simulate hot start work (much faster, already in memory)
+        val workDuration = if (scenario == Scenario.BASELINE) 50L else 150L
+
+        // Simulate resume work
+        Thread.sleep(workDuration)
+
+        val elapsed = SystemClock.elapsedRealtime() - startTime
+        BenchmarkSDK.recordMetric("startupHotMs", elapsed)
+        BenchmarkSDK.recordMetric("startupType", "hot")
+
+        android.util.Log.d("ScenarioMetrics", "Hot start simulated: ${elapsed}ms")
+
+        return elapsed
+    }
+
+    /** Simulates warm start scenario - activity recreated but process exists. */
+    fun simulateWarmStart(context: Context): Long {
+        val startTime = SystemClock.elapsedRealtime()
+
+        // Simulate warm start work (between cold and hot)
+        val workDuration = if (scenario == Scenario.BASELINE) 80L else 250L
+
+        // Simulate activity recreation work
+        Thread.sleep(workDuration)
+
+        val elapsed = SystemClock.elapsedRealtime() - startTime
+        BenchmarkSDK.recordMetric("startupWarmMs", elapsed)
+        BenchmarkSDK.recordMetric("startupType", "warm")
+
+        android.util.Log.d("ScenarioMetrics", "Warm start simulated: ${elapsed}ms")
+
+        return elapsed
+    }
+
+    /** Benchmarks notification-triggered cold start. */
+    fun benchmarkNotificationStartup(context: Context): Long {
+        val startTime = SystemClock.elapsedRealtime()
+
+        // Trigger notification
+        triggerTestNotification(context)
+
+        // Simulate notification tap and app startup
+        val workDuration = if (scenario == Scenario.BASELINE) 200L else 550L
+        Thread.sleep(workDuration)
+
+        val elapsed = SystemClock.elapsedRealtime() - startTime
+        BenchmarkSDK.recordMetric("startupNotificationMs", elapsed)
+
+        android.util.Log.d("ScenarioMetrics", "Notification startup: ${elapsed}ms")
+
+        return elapsed
     }
 
     /** Measures CPU performance by running a heavy loop. */
@@ -60,10 +137,8 @@ object ScenarioMetrics {
     fun triggerTestNotification(context: android.content.Context) {
         val notificationManager = context.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         val channelId = "benchmark_test_channel"
-        if (android.os.Build.VERSION.SDK_INT >= 26) {
-            val channel = android.app.NotificationChannel(channelId, "Benchmark Test", android.app.NotificationManager.IMPORTANCE_DEFAULT)
-            notificationManager.createNotificationChannel(channel)
-        }
+        val channel = android.app.NotificationChannel(channelId, "Benchmark Test", android.app.NotificationManager.IMPORTANCE_DEFAULT)
+        notificationManager.createNotificationChannel(channel)
         val intent = android.content.Intent(context, io.app.benchmark.MainActivity::class.java)
         intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
         val pendingIntent = android.app.PendingIntent.getActivity(context, 0, intent, android.app.PendingIntent.FLAG_IMMUTABLE)

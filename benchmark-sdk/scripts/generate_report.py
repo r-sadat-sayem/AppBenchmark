@@ -149,14 +149,47 @@ for metric_key in all_keys:
     category = categorize_metric(metric_key)
     categorized_metrics[category].append(metric_key)
 
-def get_severity(row):
-    """Determine severity level based on metric thresholds and change percentage."""
+def get_severity(row, category_name="other"):
+    """Determine severity level based on metric thresholds and change percentage.
+
+    Uses category-specific thresholds for startup metrics:
+    - Cold startup: >10% → "Needs Attention", 5-10% → "Warning"
+    - Warm/Hot startup: >5% → "Needs Attention", 2-5% → "Warning"
+    """
     if row["highlight_leak"] or row["highlight_error"]:
         return "Needs Attention"
+
     change = row["change"]
     if change is None:
         return "Normal"
+
     abs_change = abs(change)
+    metric_name = row["metric"].lower()
+
+    # Startup-specific thresholds (Phase 3)
+    if category_name == "startup" or metric_name.startswith("startup"):
+        # Cold startup thresholds (more lenient)
+        if "cold" in metric_name or "notification" in metric_name:
+            if abs_change > 10:
+                return "Needs Attention"
+            elif abs_change > 5:
+                return "Warning"
+            elif abs_change > 2:
+                return "Minor"
+            else:
+                return "Normal"
+        # Warm/Hot startup thresholds (stricter)
+        elif "warm" in metric_name or "hot" in metric_name:
+            if abs_change > 5:
+                return "Needs Attention"
+            elif abs_change > 2:
+                return "Warning"
+            elif abs_change > 1:
+                return "Minor"
+            else:
+                return "Normal"
+
+    # Default thresholds for other metrics
     if abs_change > 50:
         return "Needs Attention"
     elif abs_change > 20:
@@ -199,8 +232,16 @@ def make_rows(keys, category_name="other"):
             "change": change_val,
             "highlight_leak": highlight_leak,
             "highlight_error": highlight_error,
+            # Add unit and detailed info from schema
+            "unit": metric_meta.get("unit", ""),
+            "displayName": metric_meta.get("displayName", k),
+            "description": metric_meta.get("description", ""),
+            "detailedInfo": metric_meta.get("detailedInfo", ""),
+            "goodExample": metric_meta.get("goodExample", ""),
+            "badExample": metric_meta.get("badExample", ""),
+            "thresholds": metric_meta.get("thresholds", {})
         }
-        row["severity"] = get_severity(row)
+        row["severity"] = get_severity(row, category_name)  # Pass category for startup thresholds
         rows.append(row)
     return rows
 

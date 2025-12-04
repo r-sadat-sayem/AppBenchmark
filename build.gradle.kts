@@ -39,11 +39,30 @@ tasks.register("pullBenchmarkData") {
         // New device cache path (persists across reinstalls)
         val devicePath = "/sdcard/benchmark-results"
 
+        // Get ADB path from Android SDK
+        val adbPath = try {
+            // Try to get from Android extension
+            val androidHome = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+            if (androidHome != null) {
+                val adb = File(androidHome, "platform-tools/adb")
+                if (adb.exists()) {
+                    adb.absolutePath
+                } else {
+                    "adb" // Fallback to PATH
+                }
+            } else {
+                "adb" // Fallback to PATH
+            }
+        } catch (e: Exception) {
+            "adb" // Fallback to PATH
+        }
+
         println("""
             ═══════════════════════════════════════════════════════════════
             📥 Pulling Benchmark Data from Device Cache
             ═══════════════════════════════════════════════════════════════
             Device path: $devicePath (persists across app reinstalls)
+            ADB: $adbPath
         """.trimIndent())
 
         var errorMessages = mutableListOf<String>()
@@ -53,7 +72,7 @@ tasks.register("pullBenchmarkData") {
         val listResult = ByteArrayOutputStream()
         try {
             project.exec {
-                commandLine("adb", "shell", "ls", "-l", devicePath)
+                commandLine(adbPath, "shell", "ls", "-l", devicePath)
                 standardOutput = listResult
                 isIgnoreExitValue = true
             }
@@ -76,7 +95,7 @@ tasks.register("pullBenchmarkData") {
                 println("   📱 Pulling benchmark-$scenario.json...")
                 project.exec {
                     commandLine(
-                        "adb", "pull",
+                        adbPath, "pull",
                         "$devicePath/benchmark-$scenario.json",
                         targetFile.absolutePath
                     )
@@ -112,24 +131,63 @@ tasks.register("pullBenchmarkData") {
             """.trimIndent())
         } else {
             println("""
-                ⚠️  WARNING: Only pulled $successCount/2 benchmark files
+                ═══════════════════════════════════════════════════════════════
+                ❌ ERROR: Missing Benchmark Data Files
+                ═══════════════════════════════════════════════════════════════
                 
-                ${errorMessages.joinToString("\n                ")}
+                Found: $successCount/2 files
                 
-                Troubleshooting:
-                1. Make sure tests completed: ./gradlew runBenchmarkTests
-                2. Tests auto-persist to: $devicePath
-                3. Check device files: adb shell ls -l $devicePath
-                4. Check logs: adb logcat | grep BenchmarkSDK
-                5. Verify both variants ran (baseline and heavy)
+                ${if (errorMessages.isNotEmpty()) errorMessages.joinToString("\n                ") else ""}
                 
-                Device cache directory persists across app reinstalls ✅
+                ⚠️  ROOT CAUSE: Tests haven't been run yet or data wasn't persisted
+                
+                📋 SOLUTION - Run tests first:
+                
+                Step 1: Run benchmark tests
+                   ./gradlew runBenchmarkTests
+                   
+                   This will:
+                   • Run baseline and heavy instrumented tests
+                   • Auto-persist data to $devicePath
+                   • Take 2-5 minutes to complete
+                
+                Step 2: Verify files on device
+                   adb shell ls -l $devicePath
+                   
+                   Expected output:
+                   • benchmark-baseline.json
+                   • benchmark-heavy.json
+                
+                Step 3: Try pulling again
+                   ./gradlew pullBenchmarkData
+                
+                📖 Complete workflow:
+                   ./gradlew runBenchmarkTests && \\
+                   ./gradlew pullBenchmarkData && \\
+                   ./gradlew generateReport
+                
+                Or use the shell script:
+                   ./run_benchmarks.sh
+                
+                🔧 Troubleshooting:
+                • Check device connected: adb devices
+                • Check app installed: adb shell pm list packages | grep benchmark
+                • Check logs: adb logcat | grep BenchmarkSDK
+                • Grant permissions: ./grant_permissions.sh
                 
                 ═══════════════════════════════════════════════════════════════
             """.trimIndent())
 
-            // Fail the task if we don't have both files
-            throw GradleException("Missing benchmark data files. Only $successCount/2 files found.")
+            // Fail with clear message
+            throw GradleException("""
+                Missing benchmark data files. Only $successCount/2 files found.
+                
+                SOLUTION: Run tests first with:
+                ./gradlew runBenchmarkTests
+                
+                Then try again:
+                ./gradlew pullBenchmarkData
+            """.trimIndent())
         }
     }
 }
@@ -226,7 +284,7 @@ tasks.register("generateReport", Exec::class.java) {
                 
             """.trimIndent())
 
-            // Auto-open report in default browser
+/*            // Auto-open report in default browser
             try {
                 val os = System.getProperty("os.name").lowercase()
                 when {
@@ -258,7 +316,7 @@ tasks.register("generateReport", Exec::class.java) {
             } catch (e: Exception) {
                 println("   ⚠️  Could not auto-open: ${e.message}")
                 println("   📂 Open manually: file://${reportFile.absolutePath}")
-            }
+            }*/
 
             println("═══════════════════════════════════════════════════════════════")
         } else {
@@ -316,6 +374,49 @@ tasks.register("runBenchmarkTests") {
             
             ───────────────────────────────────────────────────────────────
         """.trimIndent())
+
+        // Get ADB path from Android SDK
+        val adbPath = try {
+            val androidHome = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT")
+            if (androidHome != null) {
+                val adb = File(androidHome, "platform-tools/adb")
+                if (adb.exists()) {
+                    adb.absolutePath
+                } else {
+                    "adb"
+                }
+            } else {
+                "adb"
+            }
+        } catch (e: Exception) {
+            "adb"
+        }
+
+        // Auto-grant permissions for debug builds
+        println("🔐 Auto-granting storage permissions for debug build...")
+        println("   Using ADB: $adbPath")
+        try {
+            project.exec {
+                commandLine(
+                    adbPath, "shell", "pm", "grant",
+                    "io.app.benchmark",
+                    "android.permission.READ_EXTERNAL_STORAGE"
+                )
+                isIgnoreExitValue = true
+            }
+            project.exec {
+                commandLine(
+                    adbPath, "shell", "pm", "grant",
+                    "io.app.benchmark",
+                    "android.permission.WRITE_EXTERNAL_STORAGE"
+                )
+                isIgnoreExitValue = true
+            }
+            println("   ✅ Permissions granted")
+        } catch (e: Exception) {
+            println("   ℹ️  Permission grant skipped (may not be needed on this Android version)")
+        }
+        println("")
     }
 
     doLast {
@@ -365,92 +466,58 @@ tasks.register("runBenchmarkTests") {
  * 4. Generates HTML report
  * 5. Opens report in browser
  *
- * No manual steps required!
+ * Note: This is a wrapper task. Use step-by-step workflow for better control:
+ * ./gradlew runBenchmarkTests && ./gradlew pullBenchmarkData && ./gradlew generateReport
  */
 tasks.register("benchmarkComplete") {
     group = "benchmark"
-    description = "Complete benchmark workflow: tests → pull data → generate report (fully automated)"
+    description = "Complete benchmark workflow: tests → pull data → generate report"
 
-    doLast {
+    // Depend on test task
+    dependsOn("runBenchmarkTests")
+
+    // Pull data and generate report in sequence
+    finalizedBy("pullBenchmarkData")
+
+    doFirst {
         println("""
             ═══════════════════════════════════════════════════════════════
             🚀 Starting Complete Benchmark Workflow
             ═══════════════════════════════════════════════════════════════
             
-            Step 1/3: Running benchmark tests (with auto-persist)...
+            This task will:
+            1. Run benchmark tests (baseline + heavy)
+            2. Pull data from device  
+            3. Generate HTML report
             
-        """.trimIndent())
-
-        // Tests will run via task dependencies and auto-persist in @After
-
-        Thread.sleep(2000) // Give tests time to finish writing files
-
-        println("""
-            
-            ═══════════════════════════════════════════════════════════════
-            Step 2/3: Pulling benchmark data from device...
-            ═══════════════════════════════════════════════════════════════
-        """.trimIndent())
-
-        try {
-            project.exec {
-                commandLine("./gradlew", "pullBenchmarkData", "--quiet")
-            }
-        } catch (e: Exception) {
-            println("""
-                
-                ❌ Failed to pull benchmark data!
-                Error: ${e.message}
-                
-                This usually means:
-                • Tests didn't complete successfully
-                • Data files weren't created on device
-                • Device is not connected
-                
-                Try running manually:
-                1. ./gradlew runBenchmarkTests
-                2. Check: adb shell ls /sdcard/Android/data/io.app.benchmark/files/benchmarks/
-                3. ./gradlew pullBenchmarkData
-                
-            """.trimIndent())
-            throw e
-        }
-
-        println("""
-            
-            ═══════════════════════════════════════════════════════════════
-            Step 3/3: Generating report and opening in browser...
-            ═══════════════════════════════════════════════════════════════
-        """.trimIndent())
-
-        try {
-            project.exec {
-                commandLine("./gradlew", "generateReport", "--quiet")
-            }
-        } catch (e: Exception) {
-            println("""
-                
-                ❌ Failed to generate report!
-                Error: ${e.message}
-                
-                Check benchmark-results/benchmarks/ for JSON files.
-                
-            """.trimIndent())
-            throw e
-        }
-
-        println("""
-            
-            ═══════════════════════════════════════════════════════════════
-            ✅ Complete Benchmark Workflow Finished!
-            ═══════════════════════════════════════════════════════════════
-            
-            Report should be open in your browser.
-            If not, check: benchmark-results/report.html
+            Note: For manual control, use:
+            ./gradlew runBenchmarkTests
+            ./gradlew pullBenchmarkData
+            ./gradlew generateReport
             
             ═══════════════════════════════════════════════════════════════
         """.trimIndent())
     }
+
+    doLast {
+        println("""
+            ═══════════════════════════════════════════════════════════════
+            ✅ Tests Complete - Data should be on device
+            ═══════════════════════════════════════════════════════════════
+            
+            Next: Run these commands manually:
+            1. ./gradlew pullBenchmarkData
+            2. ./gradlew generateReport
+            
+            (Or continue reading if pullBenchmarkData already ran via finalizedBy)
+            ═══════════════════════════════════════════════════════════════
+        """.trimIndent())
+    }
+}
+
+// Make generateReport run after pullBenchmarkData
+tasks.named("pullBenchmarkData") {
+    finalizedBy("generateReport")
 }
 
 // Configure runBenchmarkTests task dynamically after projects are evaluated

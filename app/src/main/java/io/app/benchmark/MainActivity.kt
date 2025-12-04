@@ -1,26 +1,66 @@
 package io.app.benchmark
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import io.app.benchmark.demo.ScenarioMetrics
 import io.app.benchmark.ui.theme.SampleAppBenchmarkTheme
 import io.app.benchmark.sdk.BenchmarkSDK
 import io.app.benchmark.sdk.MetricThresholds
 
 class MainActivity : ComponentActivity() {
+
+    private var isFirstLaunch = true
+    private var resumeStartTime = 0L
+
+    // Permission launcher for runtime permission requests
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allGranted = permissions.entries.all { it.value }
+        if (allGranted) {
+            Log.d("MainActivity", "✅ Storage permissions granted")
+        } else {
+            Log.w("MainActivity", "⚠️ Storage permissions denied")
+            Toast.makeText(
+                this,
+                "Storage permissions needed for benchmark data",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Request storage permissions for debug builds (Android 10 and below)
+        requestStoragePermissionsIfNeeded()
+
+        // Phase 3: Track startup type
+        if (savedInstanceState == null) {
+            // Cold start - first time creating activity
+            BenchmarkSDK.recordColdStart()
+            Log.d("MainActivity", "📱 Cold start detected")
+        } else {
+            // Warm start - activity recreated
+            BenchmarkSDK.recordWarmStart(intent.getLongExtra("warmStartTime", System.currentTimeMillis()))
+            Log.d("MainActivity", "📱 Warm start detected")
+        }
 
         // Demo: Register custom metrics and categories (Phase 1 feature)
         setupCustomMetrics()
@@ -29,19 +69,44 @@ class MainActivity : ComponentActivity() {
         val actualMetrics = BenchmarkSDK.getActualRuntimeMetrics()
         Log.i("BenchmarkSDK", "Actual runtime metrics: $actualMetrics")
         BenchmarkSDK.setScenario(BuildConfig.BENCH_SCENARIO)
-        // Automatically persist scenario metrics on startup
-        BenchmarkSDK.collectScenarioAndPersist(this)
+
+        // Mark app as ready for startup time tracking
+        BenchmarkSDK.onAppReady()
+
         setContent {
             SampleAppBenchmarkTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     BenchmarkScreen(modifier = Modifier.padding(innerPadding)) {
                         val file = BenchmarkSDK.collectScenarioAndPersist(this@MainActivity)
                         val actualMetrics = BenchmarkSDK.getActualRuntimeMetrics()
-                        Toast.makeText(this@MainActivity, "Scenario metrics saved: ${file.name}\nActual: $actualMetrics", Toast.LENGTH_LONG).show()
+                        val startupType = BenchmarkSDK.getStartupType() ?: "unknown"
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Scenario: ${file.name}\nStartup: $startupType\nMetrics: $actualMetrics",
+                            Toast.LENGTH_LONG
+                        ).show()
                     }
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        // Track hot start (app resumed from background)
+        if (!isFirstLaunch) {
+            BenchmarkSDK.recordHotStart(resumeStartTime)
+            Log.d("MainActivity", "📱 Hot start detected (resumed from background)")
+        }
+        isFirstLaunch = false
+        resumeStartTime = android.os.SystemClock.elapsedRealtime()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Record time when going to background for hot start calculation
+        resumeStartTime = android.os.SystemClock.elapsedRealtime()
     }
 
     /**
@@ -89,6 +154,34 @@ class MainActivity : ComponentActivity() {
         )
 
         Log.d("BenchmarkSDK", "Custom metrics and categories registered")
+    }
+
+    /**
+     * Request storage permissions for debug builds.
+     * For Android 10 (API 29) and below, external storage permissions are required.
+     * For Android 11+ (API 30+), scoped storage is used and permissions not needed.
+     */
+    private fun requestStoragePermissionsIfNeeded() {
+        // Only request for Android 10 and below
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+            val permissions = arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+
+            val permissionsToRequest = permissions.filter {
+                ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+            }
+
+            if (permissionsToRequest.isNotEmpty()) {
+                Log.d("MainActivity", "📋 Requesting storage permissions: $permissionsToRequest")
+                permissionLauncher.launch(permissionsToRequest.toTypedArray())
+            } else {
+                Log.d("MainActivity", "✅ Storage permissions already granted")
+            }
+        } else {
+            Log.d("MainActivity", "ℹ️ Android 11+: Scoped storage, no permissions needed")
+        }
     }
 }
 

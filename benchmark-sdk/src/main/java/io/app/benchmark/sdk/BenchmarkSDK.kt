@@ -17,9 +17,13 @@ object BenchmarkSDK {
 
     private var startupRecorded = false
     private var startupDurationMs: Long? = null
-    private val manualMetrics = ConcurrentHashMap<String, Number>()
+    private val manualMetrics = ConcurrentHashMap<String, Any>()
 
     @Volatile private var scenarioLabel: String? = null
+    @Volatile private var coldStartTimeMs: Long? = null
+    @Volatile private var hotStartTimeMs: Long? = null
+    @Volatile private var warmStartTimeMs: Long? = null
+    @Volatile private var startupType: String? = null
 
     /** Mark that the first frame (or main UI) is ready. Records startup duration. */
     fun onAppReady() {
@@ -30,8 +34,53 @@ object BenchmarkSDK {
         }
     }
 
+    /**
+     * Record cold start time (app launched from scratch).
+     * Call this from onCreate when process is first created.
+     */
+    fun recordColdStart() {
+        val elapsed = SystemClock.elapsedRealtime() - StartupTimeTracker.processStartTime
+        coldStartTimeMs = elapsed
+        startupType = "cold"
+        recordMetric("startupColdMs", elapsed)
+        Log.d(TAG, "Cold start recorded: ${elapsed}ms")
+    }
+
+    /**
+     * Record hot start time (app resumed from background, already in memory).
+     * Call this from onResume when activity is resumed.
+     */
+    fun recordHotStart(startTime: Long) {
+        val elapsed = SystemClock.elapsedRealtime() - startTime
+        hotStartTimeMs = elapsed
+        startupType = "hot"
+        recordMetric("startupHotMs", elapsed)
+        Log.d(TAG, "Hot start recorded: ${elapsed}ms")
+    }
+
+    /**
+     * Record warm start time (app recreated but process exists).
+     * Call this from onCreate when activity is recreated.
+     */
+    fun recordWarmStart(startTime: Long) {
+        val elapsed = SystemClock.elapsedRealtime() - startTime
+        warmStartTimeMs = elapsed
+        startupType = "warm"
+        recordMetric("startupWarmMs", elapsed)
+        Log.d(TAG, "Warm start recorded: ${elapsed}ms")
+    }
+
+    /**
+     * Get the current startup type being measured.
+     */
+    fun getStartupType(): String? = startupType
+
     /** Record a numeric metric explicitly (e.g., scenario duration ms). */
     fun recordMetric(name: String, value: Number) {
+        manualMetrics[name] = value
+    }
+    /** Record a String metric explicitly (e.g., scenario startup type (cold or hot)). */
+    fun recordMetric(name: String, value: String) {
         manualMetrics[name] = value
     }
 

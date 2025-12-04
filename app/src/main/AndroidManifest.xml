@@ -4,6 +4,7 @@
 
     <!-- External storage permissions for benchmark data persistence -->
     <!-- For Android 10 and below (API 28-29) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
                      android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"

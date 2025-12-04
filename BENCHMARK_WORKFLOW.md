@@ -1,14 +1,15 @@
 # Benchmark Workflow Guide
 
 **Updated:** December 4, 2025  
-**Version:** 2.0 (Phase 2+ with Persistent Storage)
+**Version:** 3.0 (Phase 3: Startup Time Metrics)
 
 ## 📋 Table of Contents
 1. [How It Works](#how-it-works)
-2. [Running Benchmarks](#running-benchmarks)
-3. [Product Flavors Explained](#product-flavors-explained)
-4. [Troubleshooting](#troubleshooting)
-5. [Advanced Usage](#advanced-usage)
+2. [Core Metrics Collected](#core-metrics-collected)
+3. [Running Benchmarks](#running-benchmarks)
+4. [Product Flavors Explained](#product-flavors-explained)
+5. [Troubleshooting](#troubleshooting)
+6. [Advanced Usage](#advanced-usage)
 
 ---
 
@@ -18,7 +19,7 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│              Benchmark Workflow (Phase 2+)                   │
+│              Benchmark Workflow (Phase 3)                    │
 └─────────────────────────────────────────────────────────────┘
 
 1. BUILD PHASE
@@ -31,7 +32,14 @@
    ├── Install app once (same package for all flavors) ✅
    ├── Run connectedBaselineDebugAndroidTest
    │   ├── App launches with baseline configuration
-   │   ├── BenchmarkSDK collects 42 metrics across 10 categories
+   │   ├── BenchmarkSDK collects 60+ metrics across 11 categories
+   │   │   ├── 🚀 Startup metrics (Cold, Warm, Hot) - MANDATORY
+   │   │   ├── ⚡ CPU & Performance
+   │   │   ├── 🧠 Memory & Heap
+   │   │   ├── 🌐 Network & API
+   │   │   ├── 💾 Storage & Database
+   │   │   ├── 🎨 UI & Rendering
+   │   │   └── Other categories
    │   └── Auto-persist: /sdcard/benchmark-results/benchmark-baseline.json ✅
    │
    ├── App stays installed (no reinstall) ✅
@@ -42,29 +50,68 @@
    │
    └── Tests complete - data in device cache (persists across reinstalls) ✅
 
-3. REPORT PHASE - Phase 2 Dynamic Generation ✅
+3. REPORT PHASE - Phase 3 Dynamic Generation ✅
    ├── Pull data: ./gradlew pullBenchmarkData
    │   ├── adb pull /sdcard/benchmark-results/benchmark-baseline.json
    │   └── adb pull /sdcard/benchmark-results/benchmark-heavy.json
    │
    ├── Generate: ./gradlew generateReport
-   │   ├── Python script: generate_report.py (DYNAMIC)
-   │   │   ├── Load metric-schema.json (categories, metadata)
+   │   ├── Python script: generate_report.py (DYNAMIC with Startup Thresholds)
+   │   │   ├── Load metric-schema.json (categories, metadata, thresholds)
    │   │   ├── Merge custom metrics/categories from JSONs
    │   │   ├── Categorize metrics using schema metadata
    │   │   ├── Compare baseline vs heavy
    │   │   ├── Calculate change percentages & severity
+   │   │   │   ├── 🚀 Startup: Cold >10% → Critical, Warm/Hot >5% → Critical
+   │   │   │   └── Others: >50% → Critical, >20% → Warning
    │   │   └── Generate dynamic category structure
    │   └── Output: benchmark-results/report.html (DYNAMIC)
    │       ├── Automatically detects all categories
+   │       ├── 🚀 Startup category appears FIRST (order=1)
    │       ├── Renders with icons, display names, ordering
    │       └── No hardcoded categories - fully extensible!
    │
    └── Auto-open browser ✅
 
 4. RESULT
-   └── Beautiful HTML report with all your custom categories
+   └── Beautiful HTML report with startup metrics at the top
 ```
+
+---
+
+## 📊 Core Metrics Collected
+
+### 🚀 **Startup Performance** (MANDATORY - Appears First)
+
+Phase 3 adds comprehensive startup metrics - the most critical indicator of app quality:
+
+| Metric | Baseline | Heavy | Description |
+|--------|----------|-------|-------------|
+| **Cold Startup (Initial Display)** | 150ms | 450ms | Time to first frame on cold start |
+| **Cold Startup (Full Display)** | 280ms | 650ms | Time to fully drawn on cold start |
+| **Cold Startup (Total)** | 430ms | 1100ms | Total cold startup time |
+| **Warm Startup (Initial Display)** | 80ms | 250ms | Time to first frame on warm start |
+| **Warm Startup (Full Display)** | 150ms | 350ms | Time to fully drawn on warm start |
+| **Warm Startup (Total)** | 230ms | 600ms | Total warm startup time |
+| **Hot Startup (Initial Display)** | 50ms | 150ms | Time to first frame on hot start |
+| **Hot Startup (Full Display)** | 80ms | 200ms | Time to fully drawn on hot start |
+| **Hot Startup (Total)** | 130ms | 350ms | Total hot startup time |
+| **Notification Launch** | 200ms | 550ms | Startup from notification tap |
+| **Library Initialization** | 100ms | 500ms | Time to initialize SDKs |
+| **Splash Screen Duration** | 200ms | 500ms | Splash screen display time |
+| **First Paint Time** | 280ms | 650ms | Time to first visual paint |
+| **Time to Interactive** | 450ms | 1200ms | Time until user can interact |
+| **Process Start** | 80ms | 180ms | Process initialization (API 24+) |
+| **Background Tasks** | 5 | 12 | Tasks running during startup |
+| **Startup Memory Footprint** | 45MB | 85MB | Memory consumed during startup |
+| **DEX Classes Loaded** | 1200 | 3500 | Classes loaded from DEX |
+| **Disk Reads** | 850KB | 2400KB | Data read from disk |
+
+**Severity Thresholds:**
+- **Cold Startup:** >10% regression → 🔴 Critical, 5-10% → 🟡 Warning
+- **Warm/Hot Startup:** >5% regression → 🔴 Critical, 2-5% → 🟡 Warning
+
+### ⚡ **CPU & Performance**
 
 ### File Flow (Phase 2+)
 

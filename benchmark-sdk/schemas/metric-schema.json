@@ -28,10 +28,10 @@
       "order": 4
     },
     "startup": {
-      "displayName": "App Startup",
+      "displayName": "App Startup Performance",
       "icon": "🚀",
-      "description": "Application initialization and startup time metrics",
-      "order": 5
+      "description": "Application cold, warm, and hot startup times with detailed metrics",
+      "order": 1
     },
     "storage": {
       "displayName": "Storage & Database",
@@ -65,6 +65,243 @@
         "critical": 3000
       }
     },
+    "startupColdInitialDisplayMs": {
+      "category": "startup",
+      "displayName": "Cold Start (Initial Display)",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time to first frame on cold start (app not in memory)",
+      "detailedInfo": "Measures the time from when the user taps the app icon until the first pixel is drawn on screen. This is a cold start - the app process doesn't exist and must be created, Application.onCreate() runs, and the first Activity is created and rendered.",
+      "goodExample": "150-300ms: Excellent - User perceives instant launch, meets Material Design guidelines",
+      "badExample": "800ms+: Poor - Noticeable delay, users may tap again thinking it didn't work, high risk of abandonment",
+      "thresholds": {
+        "good": 400,
+        "warning": 800,
+        "critical": 1500
+      }
+    },
+    "startupColdFullDisplayMs": {
+      "category": "startup",
+      "displayName": "Cold Start (Full Display)",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time to fully drawn content on cold start",
+      "thresholds": {
+        "good": 600,
+        "warning": 1200,
+        "critical": 2000
+      }
+    },
+    "startupColdTotalMs": {
+      "category": "startup",
+      "displayName": "Cold Start (Total)",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Total cold startup time including all initialization",
+      "thresholds": {
+        "good": 800,
+        "warning": 1500,
+        "critical": 2500
+      }
+    },
+    "startupWarmInitialDisplayMs": {
+      "category": "startup",
+      "displayName": "Warm Start (Initial Display)",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time to first frame on warm start (process alive, activity recreated)",
+      "detailedInfo": "Measures startup time when the app process exists but the Activity must be recreated (user pressed back, then returns). The process is warm - Application.onCreate() doesn't run, but Activity.onCreate() does.",
+      "goodExample": "80-150ms: Excellent - Nearly instant, smooth user experience",
+      "badExample": "400ms+: Poor - Feels sluggish, especially after hot start comparison",
+      "thresholds": {
+        "good": 200,
+        "warning": 400,
+        "critical": 800
+      }
+    },
+    "startupWarmFullDisplayMs": {
+      "category": "startup",
+      "displayName": "Warm Start (Full Display)",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time to fully drawn content on warm start",
+      "thresholds": {
+        "good": 300,
+        "warning": 600,
+        "critical": 1000
+      }
+    },
+    "startupWarmTotalMs": {
+      "category": "startup",
+      "displayName": "Warm Start (Total)",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Total warm startup time",
+      "thresholds": {
+        "good": 400,
+        "warning": 800,
+        "critical": 1200
+      }
+    },
+    "startupHotInitialDisplayMs": {
+      "category": "startup",
+      "displayName": "Hot Start (Initial Display)",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time to first frame on hot start (app in memory, resuming)",
+      "detailedInfo": "Measures startup time when both process and Activity exist - user simply brings the app to foreground from recents. Only onStart()/onResume() lifecycle methods run. This is the fastest startup type.",
+      "goodExample": "50-100ms: Excellent - Instant response, like native navigation",
+      "badExample": "200ms+: Poor - Unexpected delay for such a simple operation, check onResume() work",
+      "thresholds": {
+        "good": 100,
+        "warning": 200,
+        "critical": 400
+      }
+    },
+    "startupHotFullDisplayMs": {
+      "category": "startup",
+      "displayName": "Hot Start (Full Display)",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time to fully drawn content on hot start",
+      "thresholds": {
+        "good": 150,
+        "warning": 300,
+        "critical": 500
+      }
+    },
+    "startupHotTotalMs": {
+      "category": "startup",
+      "displayName": "Hot Start (Total)",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Total hot startup time",
+      "thresholds": {
+        "good": 200,
+        "warning": 400,
+        "critical": 600
+      }
+    },
+    "startupNotificationInitialDisplayMs": {
+      "category": "startup",
+      "displayName": "Notification Launch (Initial Display)",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time to first frame when launched from notification",
+      "thresholds": {
+        "good": 500,
+        "warning": 1000,
+        "critical": 2000
+      }
+    },
+    "startupProcessStartMs": {
+      "category": "startup",
+      "displayName": "Process Start Time",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time spent starting the process (available on API 24+)",
+      "thresholds": {
+        "good": 100,
+        "warning": 200,
+        "critical": 400
+      }
+    },
+    "startupInitLibrariesMs": {
+      "category": "startup",
+      "displayName": "Library Initialization",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time to initialize SDKs and libraries",
+      "thresholds": {
+        "good": 100,
+        "warning": 300,
+        "critical": 500
+      }
+    },
+    "startupSplashDurationMs": {
+      "category": "startup",
+      "displayName": "Splash Screen Duration",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Duration of splash screen display",
+      "thresholds": {
+        "good": 200,
+        "warning": 500,
+        "critical": 1000
+      }
+    },
+    "startupFirstPaintMs": {
+      "category": "startup",
+      "displayName": "First Paint Time",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time to first visual paint on screen",
+      "thresholds": {
+        "good": 300,
+        "warning": 600,
+        "critical": 1000
+      }
+    },
+    "startupTimeToInteractiveMs": {
+      "category": "startup",
+      "displayName": "Time to Interactive",
+      "unit": "ms",
+      "lowerIsBetter": true,
+      "description": "Time until user can interact with the app",
+      "thresholds": {
+        "good": 500,
+        "warning": 1000,
+        "critical": 2000
+      }
+    },
+    "startupBackgroundTasks": {
+      "category": "startup",
+      "displayName": "Background Tasks Count",
+      "unit": "count",
+      "lowerIsBetter": true,
+      "description": "Number of background tasks running during startup",
+      "thresholds": {
+        "good": 5,
+        "warning": 10,
+        "critical": 20
+      }
+    },
+    "startupMemoryFootprintMB": {
+      "category": "startup",
+      "displayName": "Startup Memory Footprint",
+      "unit": "MB",
+      "lowerIsBetter": true,
+      "description": "Memory consumed during app startup",
+      "thresholds": {
+        "good": 50,
+        "warning": 100,
+        "critical": 150
+      }
+    },
+    "startupDexLoadedClasses": {
+      "category": "startup",
+      "displayName": "DEX Classes Loaded",
+      "unit": "count",
+      "lowerIsBetter": true,
+      "description": "Number of classes loaded from DEX during startup",
+      "thresholds": {
+        "good": 1500,
+        "warning": 3000,
+        "critical": 5000
+      }
+    },
+    "startupDiskReadsKB": {
+      "category": "startup",
+      "displayName": "Startup Disk Reads",
+      "unit": "KB",
+      "lowerIsBetter": true,
+      "description": "Amount of data read from disk during startup",
+      "thresholds": {
+        "good": 1000,
+        "warning": 2500,
+        "critical": 5000
+      }
+    },
     "cpuHeavyLoopMs": {
       "category": "cpu",
       "displayName": "CPU Heavy Loop Duration",
@@ -95,6 +332,9 @@
       "unit": "KB",
       "lowerIsBetter": true,
       "description": "Proportional Set Size - actual memory used by process",
+      "detailedInfo": "PSS (Proportional Set Size) represents the actual RAM used by your app, including shared memory proportionally divided among processes. This is the most accurate measure of your app's memory footprint from the system's perspective.",
+      "goodExample": "30-50 MB: Excellent - Lightweight app, low memory pressure",
+      "badExample": "150 MB+: Poor - Heavy memory usage, risk of being killed on low-memory devices",
       "thresholds": {
         "good": 50000,
         "warning": 100000,

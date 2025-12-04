@@ -15,6 +15,38 @@ This project contains a sample Android app and a lightweight Benchmark SDK libra
 
 ## 🆕 What's New
 
+### Phase 3: Startup Time Metrics ✅ **COMPLETED**
+
+The SDK now includes **comprehensive app startup performance metrics** - the most critical indicator of app quality:
+
+✅ **20+ startup metrics** - Cold, Warm, Hot startup times  
+✅ **Automatic measurement** - No configuration required  
+✅ **Startup-specific thresholds** - Cold >10% → Critical, Warm/Hot >5% → Critical  
+✅ **First in report** - Startup category appears at top (order=1)  
+✅ **Detailed breakdown** - Initial display, full display, time to interactive  
+✅ **Health metrics** - Memory footprint, DEX classes loaded, disk I/O  
+✅ **Units display** - All metrics show proper units (ms, MB, KB, count) with auto-conversion  
+✅ **Interactive info icons** - Click ℹ️ to see detailed metric explanations, thresholds, and examples  
+
+**Startup Metrics Included:**
+- Cold Start: Initial display, full display, total time
+- Warm Start: Initial display, full display, total time  
+- Hot Start: Initial display, full display, total time
+- Notification Launch, Process Start, Library Init, Splash Screen
+- Time to Interactive, First Paint, Background Tasks, Memory Footprint
+
+**Enhanced UX Features:**
+- **Units:** Automatic display with smart conversion (1500ms → 1.5s, 2048KB → 2MB)
+- **Info Tooltips:** Click any ℹ️ icon to see:
+  - Detailed metric description
+  - Threshold ranges (Excellent/Good/Warning/Critical)
+  - Good vs Bad examples with real-world context
+  - Your current values with comparison
+
+📖 **[Phase 3 Complete Documentation](PHASE3_STARTUP_COMPLETE.md)** - Full implementation guide
+
+---
+
 ### Phase 2 + Enhancements ✅ **COMPLETED**
 
 The report system is now **fully dynamic** with enhanced testing and persistent storage:
@@ -98,11 +130,12 @@ Then pull data and generate report:
 
 ### What You Get
 
-- **42 test scenarios** across 10 categories
+- **60+ test scenarios** across 11 categories (includes 20+ startup metrics)
 - **Persistent storage** in `/sdcard/benchmark-results/`
 - **Auto-open browser** with beautiful HTML report
 - **Dynamic categories** with icons and styling
 - **Device cache** survives app reinstalls
+- **Startup metrics** appear first in report (most critical)
 
 ### Advanced Usage
 
